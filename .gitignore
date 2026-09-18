@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 logs/
 !kaggle/**/*.log
+results data charts site
