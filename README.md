@@ -24,9 +24,10 @@ construction (dense vs sparse targets) was shown to reorder architecture ranking
 
 ## Reproduce
 ```
-python3 run_all.py          # 84 runs; designed for a Kaggle GPU session
+python3 run_all.py          # 84 runs; designed for 4 parallel Kaggle CPU sessions
 python3 aggregate.py        # build data/summary.json from results/
 ```
 Single run: `python3 bench.py --model scar --task five --density sparse --seed 0`
 
-Training runs on Kaggle (see `kaggle/`); this repo holds code + results only.
+Training runs on Kaggle CPU (`kaggle/`, one kernel per task-density config) —
+tiny sequential models are ~13x faster on CPU than GPU. Code + results live here.
