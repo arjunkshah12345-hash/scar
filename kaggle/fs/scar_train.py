@@ -8,7 +8,7 @@ if not os.path.exists(WORK):
     subprocess.run(["git", "clone", REPO, WORK], check=True)
 os.chdir(WORK)
 
-configs = "parity_dense,parity_sparse,five_dense,five_sparse"
+configs = "five_sparse"
 workers = "4"  # 4 vCPU on Kaggle CPU sessions
 # resume-safe: run_all.py skips result files that already exist
 subprocess.run([sys.executable, "run_all.py", "--configs", configs, "--workers", workers], check=True)
