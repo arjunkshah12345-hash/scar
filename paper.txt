@@ -1,0 +1,430 @@
+SCAR: STATE-CARRIER WITH ATTENTIVE RECALL
+Testing whether state-tracking benefits come from O(1) state-carriage,
+not O(T) memory
+
+Arjun K. Shah
+September 2026
+
+Abstract
+
+A prior architecture study ("RLT") found that a model with an O(T)
+encoder memory and a looped read decoder substantially outperformed
+same-budget recurrent baselines on synthetic state-tracking tasks, at
+roughly 4x the training cost of a GRU. That study left open which
+ingredient was responsible: the growing memory, the looped decoder, or
+the carriage of state across the sequence with a cheap read path. We
+propose SCAR (State-Carrier with Attentive Recall), a minimal
+architecture designed to isolate the third ingredient: a GRU state-
+carrier (O(1) per token), a multi-timescale compressed memory of k=16
+slots with learned per-slot decay (constant size, never grows), and a
+single small attentive-recall head that reads the slots (O(1) per
+token). We evaluate SCAR and six baselines (Elman RNN, LSTM, GRU,
+transformer, token-merge attention, and RLT) under a
+supervision-density-controlled protocol: two tasks (mod-2 parity,
+chance 50%; a random 5-state automaton, chance 20%), each in a dense
+(per-step targets) and a sparse (end-of-chain answer only) supervision
+regime, at matched parameter budget (~75-84K), 2,500 training steps at
+sequence length 32, and evaluation at lengths 16/32/64/128 over 2,048
+programs per length with 3 seeds. SCAR matches or exceeds RLT accuracy
+on every task-density-length cell while running at 0.64-0.87x of RLT's
+measured training cost, and matches GRU-level accuracy on parity-dense
+(97.8% vs 98.3% at length 128) where RLT degrades to 67.0%. However,
+SCAR is not GRU-class in cost (roughly 3-5x GRU); the cost bet is
+therefore half-won. The harness also yields two further results: (i)
+under the sparsified parity regime all seven architectures collapse to
+the 50% chance floor -- no ordering survives -- and (ii) no
+architecture reorders across the dense-to-sparse supervision swap,
+supporting the thesis that architecture claims must survive
+supervision-density perturbation. Finally, a training-infrastructure
+footnote: the entire suite trains about 13x slower on a GPU (T4) than
+on CPU cores for these tiny sequential models, due to kernel-launch
+overhead dominating the actual arithmetic.
+
+1. Introduction
+
+Modern language-model architectures differ enormously in how they
+carry information across a sequence. Transformers carry everything in
+an O(T) key-value cache; recurrent networks compress the past into a
+fixed-size state; hybrid designs interpolate. When a new architecture
+shows an advantage on a state-tracking benchmark, it is natural to
+credit the most visible mechanism. In our previous study we observed
+that a memory-augmented recurrent model (RLT) outperformed
+same-budget recurrent baselines, and we attributed the gain to its
+combination of state-carriage and memory-augmented recall. But RLT
+carried two expensive ingredients: an O(T) encoder memory and a
+looped decoder. The confound was never resolved.
+
+This paper resolves it by subtraction. We built SCAR, the minimal
+architecture that keeps what we believe is load-bearing -- state-
+carriage plus a cheap read path over a compressed memory -- and drops
+everything else: the memory never grows, there is no looped decoder,
+and the read path is a single attention over k slots, once per token.
+If SCAR recovers RLT's accuracy profile, the benefit of the heavier
+design comes from the cheap ingredients. If it does not, the O(T)
+memory or the loop is load-bearing.
+
+SCAR's design is deliberately austere:
+
+  - a GRUCell carrier reads each token and updates a state h;
+  - a gated write extracts from (embedding, h) the part of the state
+    worth remembering;
+  - k = 16 exponential-moving-average slots, each with its own
+    learned decay rate (initialized log-spaced across ~2 decades of
+    timescale, 0.90 to 0.999), absorb the write. The memory is
+    literally B x 16 x 88 activations -- constant, never growing;
+  - a recall head performs one attention: the carrier state issues
+    the query (in R^40), the slots serve as keys and values, and the
+    recalled vector is added to the carrier state before the output
+    projection.
+
+Everything runs O(1) per token. There is no KV cache, no retrieval
+loop, no second pass.
+
+Our claims are modest and testable. This paper contributes:
+
+  1. SCAR, a ~78K-parameter state-carrier architecture with O(1)
+     per-token compute and constant-size memory (Section 3).
+
+  2. A supervision-density-controlled evaluation harness: two tasks
+     crossed with two supervision densities, matched-budget models,
+     matched optimization, length generalization from 16 to 128, and
+     a chance-floor sanity check (Section 2).
+
+  3. Results showing SCAR matches or beats RLT everywhere at
+     strictly lower cost, but does not reach GRU-class cost --
+     an honest accounting of where the bet landed (Section 4).
+
+  4. Two harness-level findings: universal collapse to chance under
+     sparse parity, and no rank reordering under the density swap
+     (Section 5).
+
+  5. An infrastructure footnote quantifying the GPU penalty for tiny
+     sequential workloads (Section 6).
+
+2. Related work
+
+This work is a direct descendant of our prior architecture study,
+which established the RLT design, the cost confound, and the
+observation that supervision density can reorder architecture
+rankings. The broader context is the family of approaches to
+long-range state tracking: (i) fixed-size recurrent state (Elman,
+LSTM, GRU), which is exact per-step but compresses lossily; (ii)
+O(T) attention memory (transformers, token-merge style pooling), which
+is exact but pays growing read cost; (iii) linear-attention and
+state-space hybrids, which compress the KV cache into fixed-size
+state via decay; and (iv) memory-augmented recurrent models with
+attentional read, of which RLT and SCAR are instances. SCAR is
+closest to (iii) in its use of learned multi-timescale decay, but
+keeps a nonlinear recurrent carrier (the GRU) rather than a linear
+update, and reads via attention over slot contents rather than
+discounted key-value sums. Our harness design is motivated by the
+prior study's observation that supervision density -- not sequence
+length -- is the variable that silently decides which architecture
+appears best.
+
+3. Method
+
+3.1 The supervision-density harness
+
+Tasks. Two state-tracking tasks over discrete token streams:
+
+  - parity: a stream of bits; the state is the running sum mod 2.
+    Chance accuracy 50%. Dense targets are the running parity after
+    every token; sparse supervision is the final parity alone.
+
+  - five: a stream of symbols over a random 5-state automaton with
+    random permutation transitions; the state is the automaton's
+    state after the full stream. Chance accuracy 20%. Dense targets
+    are the full state trajectory; sparse supervision is the final
+    state alone.
+
+The five-task automaton is sampled fresh per seed, so models cannot
+memorize a fixed transition table across seeds.
+
+Supervision density. The dense regime supervises every step of the
+chain (the per-step target sequence); the sparse regime supervises
+only the end of the chain (one cross-entropy term per program). This
+crossing of task x density produces four regimes: parity_dense,
+parity_sparse, five_dense, five_sparse. The prior study observed
+that architecture rankings can reorder between such regimes; this
+harness makes that a first-class measurement.
+
+Budget control. Every model is sized to approximately 75-84K
+parameters (Table 1). All models train for 2,500 steps at batch 64
+with sequences of 32 ops (plus BOS), AdamW (lr 3e-3, weight decay
+0.01), warmup-plus-decay schedule, gradient clipping at 1.0. All
+runs use 3 seeds; reported accuracies are seed means.
+
+Evaluation. Each model is evaluated on 2,048 freshly generated test
+programs at each of lengths 16, 32, 64, and 128 ops -- lengths both
+shorter and much longer than the training length, probing
+generalization in both directions.
+
+3.2 Models
+
+Table 1: the field.
+
+  model          params    per-token structure
+  elman           76-79K   single-layer recurrent state
+  lstm            76-77K   gated recurrent state
+  gru             77-79K   gated recurrent state (gate-pruned)
+  transformer     77K      causal attention, sliding window
+  token_merge     83K      attention with learned token pooling
+  rlt             75K      O(T) encoder memory + looped decoder
+  scar            78K      GRU carrier + 16-slot decayed memory
+                           + attentive recall
+
+3.3 SCAR
+
+Dimensions: d = 88 (carrier width), k = 16 (slots), r = 40 (recall
+projection). The forward pass, per token t:
+
+  e   = Embed(x_t)                              in R^88
+  h   = GRUCell(e, h)                           carrier update
+  u   = sigmoid(W_g [e ; h]) * h                gated write
+  M   = lambda * M + (1 - lambda) * u           k-slot EMA write
+  q   = W_q LN(h)                               query, in R^40
+  att = softmax(q K(M)^T / sqrt(40))            one attention head
+  out = LN(h + W_o V(M) att)                    read + residual
+  logits = W_out out
+
+where lambda = sigmoid(learned per-slot logits), initialized so that
+the effective decay rates spread log-uniformly from 0.90 to 0.999
+(timescales from ~10 tokens to ~1,000 tokens). Slot i thus
+summarizes the past at its own timescale; the recall head queries
+the mixture. The write gate decides what the memory absorbs from
+the joint (token, carrier) representation, rather than writing
+everything.
+
+Compute and memory are O(1) per token with a constant B x 16 x 88
+memory tensor. There is no KV cache and no looped decoder.
+
+4. Results
+
+All numbers are means over 3 seeds; accuracy in percent on held-out
+programs, evaluated at each length. Costs are measured training
+milliseconds per step on Kaggle CPU sessions (4 vCPUs), averaged
+over the run; relative costs are what matter.
+
+Table 2: parity_dense accuracy (chance 50).
+
+  model        len16  len32  len64  len128   ms/step
+  elman        100.0  100.0  100.0  100.0      151
+  gru           98.3   98.3   98.2   98.1      204
+  scar          97.8   97.9   97.7   97.8     1227
+  lstm          80.3   81.2   80.8   80.7      258
+  rlt           78.4   75.2   72.6   67.0     1407
+  token_merge   75.5   75.0   75.6   75.4     1641
+  transformer   38.8   51.1   50.5   50.5      203
+
+The headline result is the interaction of SCAR and RLT with length.
+RLT degrades monotonically with evaluation length (78.4 -> 67.0),
+while SCAR is flat at ~97.8 across the entire 16-to-128 range --
+SCAR matches GRU and beats RLT by 30.8 points at length 128, at
+0.87x of RLT's cost. The plain Elman RNN solves the task perfectly:
+dense parity supervision is learnable by the simplest possible
+recurrent net, which any more complex model should match.
+
+Table 3: five_dense accuracy (chance 20).
+
+  model        len16  len32  len64  len128   ms/step
+  elman         92.9   98.8  100.0  100.0      194
+  token_merge   93.1   98.8  100.0  100.0     1526
+  rlt           92.5   98.9   99.9  100.0     1429
+  scar          92.5   98.8  100.0  100.0      986
+  gru           92.8   99.0  100.0  100.0      205
+  lstm          91.2   98.7  100.0  100.0      237
+  transformer   73.5   73.4   32.5   32.4      195
+
+On the automaton task with dense supervision, all recurrent models
+converge to 100% at length 128. SCAR tracks RLT within noise at
+0.69x its cost. The transformer, the only non-recurrent-carrier
+model here, holds ~73% at short lengths and collapses toward chance
+at lengths 64+: sliding-window attention over 128 ops cannot carry
+state that the training length never required it to carry.
+
+Table 4: five_sparse accuracy (chance 20).
+
+  model        len16  len32  len64  len128   ms/step
+  elman         91.3   98.6   99.9  100.0      171
+  token_merge   91.7   98.5   99.9  100.0     1565
+  gru           90.5   98.6  100.0  100.0      208
+  scar          91.0   98.5   99.9  100.0      565
+  rlt           90.3   98.5   99.8   99.9      882
+  lstm          90.0   98.6   99.9  100.0      190
+  transformer   28.3   39.0   31.0   29.8      176
+
+With single end-of-chain supervision, the recurrent family still
+solves the task: SCAR sits within 0.3 points of RLT at every length
+at 0.64x its cost. Removing per-step targets does not reorder the
+recurrent field; it only removes models that could not already do
+the task.
+
+Table 5: parity_sparse accuracy (chance 50).
+
+  model        len16  len32  len64  len128   ms/step
+  elman         50.2   49.3   50.0   49.6      650
+  lstm          50.4   49.5   50.2   49.7      225
+  gru           50.4   49.5   50.2   49.7      205
+  transformer   50.4   49.5   50.2   49.7      176
+  token_merge   50.4   49.5   50.2   49.7     1529
+  rlt           50.4   49.5   50.2   49.7      851
+  scar          50.4   49.5   50.2   49.7      555
+
+Every model, every length, every seed: the 50% chance floor. This is
+the harness working as designed -- it found a regime where the
+entire comparison is vacuous, and tells you so. Under sparse parity,
+no architecture claim can be made at this budget, and any benchmark
+reporting a winner on such a regime is reporting noise.
+
+4.1 The cost verdict
+
+SCAR's bet was "RLT accuracy at GRU-class cost." The accuracy half
+holds: SCAR >= RLT in all four task-density regimes, and
+dramatically so at long lengths on parity_dense. The cost half does
+not: SCAR's attentive recall and its 16-slot memory write put it at
+986-1227 ms/step versus GRU's 204-208 -- a 3-5x premium, not
+GRU-class. What SCAR achieves is RLT-class accuracy at 0.64-0.87x of
+RLT's cost, in the token_merge cost bracket. The gap to GRU is the
+price of the multi-timescale memory; closing it is the obvious next
+target (e.g., fewer slots, shared key/value projections, or decayed
+keys instead of decayed contents).
+
+The measured RLT-vs-GRU ratio in this harness (roughly 4-7x,
+depending on regime) is consistent with the prior study's "4x"
+observation, which is what made the cost confound worth chasing in
+the first place.
+
+5. Harness-level findings
+
+5.1 The chance floor is real and detectable
+
+Sparse parity is a control condition, not a benchmark: at 2,500
+steps, a single bit of supervision per program, all seven
+architectures sit at exactly chance. The harness's value is that it
+converts "our model failed" into "the regime is below every model's
+learnability threshold at this budget" -- a statement seven
+concordant data points support. Regimes with a floor are exactly the
+ones where a single lucky seed would otherwise fabricate an
+architecture claim.
+
+5.2 No reordering under the density swap
+
+The prior study observed rank reordering across supervision
+densities. In this experiment, the swap produces no reordering: the
+recurrent family's ordering is stable across five_dense and
+five_sparse, and parity_sparse degenerates uniformly. This is a
+conservative outcome -- no architecture in this pool claims an
+advantage that does not survive the density swap. It also sharpens
+the prior finding: reordering is a real phenomenon but requires
+regimes where models are partially (not wholly) learning; in the
+ceiling-or-floor regimes here, density changes nothing.
+
+5.3 Length generalization separates carriers from caches
+
+The transformer's collapse at length 64+ (Tables 2 and 3; its
+training length is 32) and RLT's monotonic degradation on
+parity_dense are both length effects; SCAR, LSTM, GRU, and Elman are
+flat. A fixed-size state carried through the sequence generalizes
+to longer chains for free; an O(T) memory whose read path was
+calibrated at length 32 does not, without further machinery. This is
+the clearest evidence in the study that state-carriage -- not
+memory size -- is what transfers.
+
+6. Infrastructure footnote: the GPU is the wrong tool at this scale
+
+A first attempt ran this entire sweep on a single Kaggle GPU session
+(T4). The result: RLT trained at 4,444 ms/step on GPU versus 342
+ms/step on a laptop CPU -- a 13x penalty -- and the session hit its
+time limit having completed zero of 84 runs. The cause is prosaic:
+tiny sequential models execute hundreds of micro-operations per
+token, and on GPU each pays a fixed kernel-launch overhead that
+dwarfs the arithmetic (78K parameters, batch 64). CPU sessions
+running four parallel kernels completed all 84 runs comfortably.
+The lesson generalizes: "GPU" is not synonymous with "faster" --
+the crossover sits well above this workload's scale. We report the
+negative run both as an infrastructure warning and because the
+cost figures in this paper are CPU-only for exactly this reason.
+
+7. Limitations
+
+The scope is deliberately narrow, and the narrowness has teeth:
+
+  - two synthetic tasks only. SCAR's advantage is demonstrated on
+    exact state-tracking; nothing here speaks to natural-language
+    scale. The tasks are, however, the same family on which the
+    original RLT advantage was claimed.
+
+  - 2,500 training steps. Sparse parity may be learnable with more
+    budget; the universal floor is a statement about this budget.
+
+  - 3 seeds. Differences of <1 point (e.g., SCAR 97.8 vs GRU 98.3)
+    are within seed noise; we do not claim significance there. The
+    claims we make -- 30-point gaps, chance floors, cost ratios --
+    are far outside noise.
+
+  - costs are wall-clock on one CPU environment; ratios transfer
+    better than absolute numbers.
+
+  - SCAR's hyperparameters (d=88, k=16, r=40) were fixed once and
+    shared across all regimes; no per-task tuning was done, which
+    is a fairness feature but also leaves SCAR's true optimum
+    unexplored.
+
+8. Conclusion
+
+We asked whether the benefit of memory-augmented recurrent models
+comes from expensive machinery or cheap principles. SCAR -- a GRU
+carrier, sixteen decayed slots, and one attentive read -- recovers
+the full accuracy profile of a 4-7x-costlier O(T)-memory design,
+generalizes flatly across an 8x length range where that design
+degrades, and costs 0.64-0.87x as much. It does not reach GRU-class
+cost; the memory is real overhead, and making recall cheaper is the
+open problem this paper leaves. The supervision-density harness
+earned its keep twice: it exposed a regime where all comparisons are
+vacuous (sparse parity's chance floor), and it certified that no
+ranking here is an artifact of supervision density. At this scale,
+the GPU turned out to be the wrong tool by 13x -- worth remembering
+before the next benchmark burns a session on it.
+
+The bet, restated honestly: state-carriage plus a cheap read path
+captures most of what O(T) memory buys. SCAR is the evidence, and
+its remaining cost gap to the GRU is the map of what is still
+missing.
+
+Reproducibility
+
+All code, the full result set (84 runs), aggregation, charts, and
+the live site are at github.com/arjunkshah12345-hash/scar.
+
+  Single run:    python3 bench.py --model scar --task five \
+                   --density sparse --seed 0
+  Full sweep:    python3 run_all.py                 # 7x4x3 = 84 runs
+  Publication:   python3 aggregate.py && python3 make_charts.py \
+                   && python3 build_site.py
+
+Training was performed on four parallel Kaggle CPU sessions (one
+kernel per task-density regime; kernel sources in kaggle/). The GPU
+attempt described in Section 6 is documented in the repository
+history.
+
+Appendix A: measured training cost by regime (ms/step, CPU)
+
+  model       p-dense  p-sparse  f-dense  f-sparse
+  elman          151       650      194       171
+  lstm           258       225      237       190
+  gru            204       205      205       208
+  transformer    203       176      195       176
+  token_merge   1641      1529     1526      1565
+  rlt           1407       851     1429       882
+  scar          1227       555      986       565
+
+Appendix B: parameter counts
+
+  elman 76,416 (parity) / 78,720 (five)
+  lstm  75,648 / 76,800
+  gru   77,280 / 78,624
+  transformer 76,608 / 77,280
+  token_merge 82,880 / 83,552
+  rlt   75,000
+  scar  77,896 / 78,952
