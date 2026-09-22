@@ -3,3 +3,5 @@ __pycache__/
 logs/
 !kaggle/**/*.log
 results data charts site
+.DS_Store
+kaggle-out/
