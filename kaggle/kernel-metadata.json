@@ -1,0 +1,13 @@
+{
+  "id": "aks1321/scar-sweep",
+  "title": "scar-sweep",
+  "code_file": "scar_train.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": false,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": []
+}
