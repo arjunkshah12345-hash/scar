@@ -1,29 +1,43 @@
-"""Aggregate results/*.json into data/summary.json (mean/min/max across seeds)."""
-import glob, json, os
+"""Aggregate results/*.json into data/summary.json.
+
+Reports mean, std, min, max AND the individual per-seed accuracies at every
+evaluated length, plus the chance level, so no statistic in the paper/site can
+hide seed variation. Tolerant of partial sweeps: whatever runs exist are
+aggregated, and n_seeds is reported per row.
+"""
+import glob, json, os, statistics
 from collections import defaultdict
 
 rows = defaultdict(list)
-for path in glob.glob("results/*.json"):
+for path in sorted(glob.glob("results/*.json")):
     with open(path) as f:
         r = json.load(f)
-    key = (r["model"], r["task"], r["supervision"].split("_")[-1])
-    rows[key].append(r)
+    rows[(r["model"], r["supervision"])].append(r)
 
 summary = {}
-for (model, task, density), rs in sorted(rows.items()):
-    accs = [r["acc"] for r in rs]
-    summary[f"{model}|{task}_{density}"] = {
+for (model, supervision), rs in sorted(rows.items()):
+    lengths = sorted(int(l) for l in rs[0]["acc"])
+    train_ops = rs[0]["train_ops"]
+    summary[f"{model}|{supervision}"] = {
         "n_seeds": len(rs),
-        "params": rs[0]["params"],
-        "train_ms_per_step": round(sum(r["train_ms_per_step"] for r in rs) / len(rs), 2),
-        "acc_by_len": {l: {
-            "mean": round(sum(a[l] for a in accs) / len(accs), 1),
-            "min": round(min(a[l] for a in accs), 1),
-            "max": round(max(a[l] for a in accs), 1),
-        } for l in accs[0]},
+        "params": sorted({r["params"] for r in rs}),
+        "steps": rs[0]["steps"], "batch": rs[0]["batch"], "lr": rs[0].get("lr"),
+        "train_ops": train_ops,
+        "chance_pct": rs[0].get("chance_pct"),
+        "trained_length_in_eval": train_ops in lengths,
+        "acc_by_len": {str(l): {
+            "mean": round(statistics.mean(a["acc"][str(l)] for a in rs), 2),
+            "std": round(statistics.stdev([a["acc"][str(l)] for a in rs]), 2) if len(rs) > 1 else 0.0,
+            "min": round(min(a["acc"][str(l)] for a in rs), 2),
+            "max": round(max(a["acc"][str(l)] for a in rs), 2),
+            "seeds": [round(a["acc"][str(l)], 2) for a in rs],
+        } for l in lengths},
+        "train_ms_per_step": round(statistics.mean(r["train_ms_per_step"] for r in rs), 1),
+        "train_seconds": round(statistics.mean(r["train_seconds"] for r in rs), 1),
     }
 
 os.makedirs("data", exist_ok=True)
 with open("data/summary.json", "w") as f:
     json.dump(summary, f, indent=2)
-print(f"wrote data/summary.json ({len(summary)} model|config rows)")
+print(f"wrote data/summary.json ({len(summary)} model|config rows, "
+      f"{sum(r['n_seeds'] for r in summary.values())} runs)")

@@ -1,18 +1,21 @@
-"""Parallel driver: 7 models x task-density configs x 3 seeds.
+"""Parallel driver: 9 models x task-density configs x 3 seeds.
 
-Usage: python3 run_all.py [--configs parity_dense,five_sparse] [--workers 7]
+Usage: python3 run_all.py [--configs parity_dense,recall_sparse] [--workers 4]
 Designed for Kaggle CPU sessions (4 cores): tiny sequential models run ~13x
 faster on CPU than GPU -- kernel-launch overhead dominates on GPU.
+Resume-safe: existing result files are skipped, so a kernel can be re-run.
 """
-import argparse, itertools, os, subprocess, sys, time
+import argparse, os, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
-MODELS = ["elman", "lstm", "gru", "transformer", "token_merge", "rlt", "scar"]
+MODELS = ["elman", "lstm", "gru", "transformer", "token_merge", "rlt",
+          "scar", "scar_carrier", "scar_norecall"]
 CONFIGS = {
     "parity_dense": ("parity", "dense"),
     "parity_sparse": ("parity", "sparse"),
     "five_dense": ("five", "dense"),
     "five_sparse": ("five", "sparse"),
+    "recall_sparse": ("recall", "sparse"),
 }
 SEEDS = [0, 1, 2]
 STEPS = 2500
@@ -34,13 +37,14 @@ def run(job):
         return
     log = open(f"logs/{tag}.log", "w")
     t0 = time.time()
-    subprocess.run(
+    rc = subprocess.run(
         [sys.executable, "bench.py", "--model", model, "--task", task,
          "--density", density, "--seed", str(seed), "--steps", str(STEPS),
          "--device", "cpu", "--out", "results"],
         stdout=log, stderr=subprocess.STDOUT,
-    )
-    print(f"done {tag} in {time.time()-t0:.0f}s", flush=True)
+    ).returncode
+    status = "done" if rc == 0 else f"FAILED rc={rc}"
+    print(f"{status} {tag} in {time.time()-t0:.0f}s", flush=True)
 
 os.makedirs("logs", exist_ok=True)
 os.makedirs("results", exist_ok=True)
