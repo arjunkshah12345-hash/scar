@@ -1,0 +1,47 @@
+{
+  "model": "scar_carrier",
+  "task": "five",
+  "seed": 2,
+  "params": 78624,
+  "steps": 2500,
+  "batch": 64,
+  "lr": 0.003,
+  "train_ops": 32,
+  "eval_lengths": [
+    16,
+    32,
+    64,
+    128,
+    256
+  ],
+  "chance_pct": 20.0,
+  "bos_token": 9,
+  "supervision": "five_dense",
+  "acc": {
+    "16": 100.0,
+    "32": 100.0,
+    "64": 100.0,
+    "128": 100.0,
+    "256": 100.0
+  },
+  "eval_ms_per_program": {
+    "16": 0.454254674805199,
+    "32": 1.0944869677738112,
+    "64": 4.77355599853535,
+    "128": 10.107997167480676,
+    "256": 5.877718324707182
+  },
+  "train_ms_per_step": 218.00845008200122,
+  "final_loss": 4.48349258658709e-05,
+  "train_seconds": 668.5536936869994,
+  "env": {
+    "torch": "2.10.0+cpu",
+    "numpy": "2.0.2",
+    "python": "3.12.13",
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "device": "cpu",
+    "torch_threads": 2,
+    "git_commit": "d97cf13",
+    "timestamp_utc": "2026-09-23T04:54:15.059926+00:00"
+  }
+}

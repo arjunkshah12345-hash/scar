@@ -1,0 +1,47 @@
+{
+  "model": "gru",
+  "task": "five",
+  "seed": 1,
+  "params": 78624,
+  "steps": 2500,
+  "batch": 64,
+  "lr": 0.003,
+  "train_ops": 32,
+  "eval_lengths": [
+    16,
+    32,
+    64,
+    128,
+    256
+  ],
+  "chance_pct": 20.0,
+  "bos_token": 9,
+  "supervision": "five_sparse",
+  "acc": {
+    "16": 100.0,
+    "32": 100.0,
+    "64": 100.0,
+    "128": 100.0,
+    "256": 100.0
+  },
+  "eval_ms_per_program": {
+    "16": 0.3151336416014061,
+    "32": 0.6323699858399312,
+    "64": 0.985417864746152,
+    "128": 2.5186248027344593,
+    "256": 5.00875106298837
+  },
+  "train_ms_per_step": 206.53557327200087,
+  "final_loss": 0.00011028293629351537,
+  "train_seconds": 570.5738158940001,
+  "env": {
+    "torch": "2.10.0+cpu",
+    "numpy": "2.0.2",
+    "python": "3.12.13",
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "device": "cpu",
+    "torch_threads": 2,
+    "git_commit": "d97cf13",
+    "timestamp_utc": "2026-09-23T02:18:01.671953+00:00"
+  }
+}

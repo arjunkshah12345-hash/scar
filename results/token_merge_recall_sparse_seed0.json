@@ -1,0 +1,44 @@
+{
+  "model": "token_merge",
+  "task": "recall",
+  "seed": 0,
+  "params": 83440,
+  "steps": 2500,
+  "batch": 64,
+  "lr": 0.003,
+  "train_ops": 64,
+  "eval_lengths": [
+    64,
+    128,
+    256,
+    512
+  ],
+  "chance_pct": 12.5,
+  "bos_token": 8,
+  "supervision": "recall_sparse",
+  "acc": {
+    "64": 12.451171875,
+    "128": 12.353515625,
+    "256": 14.16015625,
+    "512": 12.6953125
+  },
+  "eval_ms_per_program": {
+    "64": 6.372397576660305,
+    "128": 22.478717869140574,
+    "256": 31.529748764159926,
+    "512": 52.5856568876959
+  },
+  "train_ms_per_step": 3439.3390154579974,
+  "final_loss": NaN,
+  "train_seconds": 8645.147360898,
+  "env": {
+    "torch": "2.10.0+cpu",
+    "numpy": "2.0.2",
+    "python": "3.12.13",
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "device": "cpu",
+    "torch_threads": 2,
+    "git_commit": "d97cf13",
+    "timestamp_utc": "2026-09-23T05:15:16.087596+00:00"
+  }
+}

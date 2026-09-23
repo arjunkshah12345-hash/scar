@@ -1,0 +1,44 @@
+{
+  "model": "gru",
+  "task": "recall",
+  "seed": 2,
+  "params": 78400,
+  "steps": 2500,
+  "batch": 64,
+  "lr": 0.003,
+  "train_ops": 64,
+  "eval_lengths": [
+    64,
+    128,
+    256,
+    512
+  ],
+  "chance_pct": 12.5,
+  "bos_token": 8,
+  "supervision": "recall_sparse",
+  "acc": {
+    "64": 100.0,
+    "128": 100.0,
+    "256": 88.623046875,
+    "512": 36.572265625
+  },
+  "eval_ms_per_program": {
+    "64": 0.9640166445312737,
+    "128": 1.6924382773435553,
+    "256": 3.4579894443358405,
+    "512": 7.797552544921871
+  },
+  "train_ms_per_step": 299.96640521001336,
+  "final_loss": 7.995959662366658e-05,
+  "train_seconds": 1009.5927073360003,
+  "env": {
+    "torch": "2.10.0+cpu",
+    "numpy": "2.0.2",
+    "python": "3.12.13",
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "device": "cpu",
+    "torch_threads": 2,
+    "git_commit": "d97cf13",
+    "timestamp_utc": "2026-09-23T02:51:01.220052+00:00"
+  }
+}

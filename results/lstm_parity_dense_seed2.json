@@ -1,0 +1,47 @@
+{
+  "model": "lstm",
+  "task": "parity",
+  "seed": 2,
+  "params": 75648,
+  "steps": 2500,
+  "batch": 64,
+  "lr": 0.003,
+  "train_ops": 32,
+  "eval_lengths": [
+    16,
+    32,
+    64,
+    128,
+    256
+  ],
+  "chance_pct": 50.0,
+  "bos_token": 3,
+  "supervision": "parity_dense",
+  "acc": {
+    "16": 100.0,
+    "32": 100.0,
+    "64": 100.0,
+    "128": 100.0,
+    "256": 100.0
+  },
+  "eval_ms_per_program": {
+    "16": 0.3951074428710788,
+    "32": 0.9857818920898653,
+    "64": 1.2132333217773628,
+    "128": 2.3261691845702925,
+    "256": 4.839983323730479
+  },
+  "train_ms_per_step": 241.31131395199733,
+  "final_loss": 1.643955285544507e-05,
+  "train_seconds": 544.317535472,
+  "env": {
+    "torch": "2.10.0+cpu",
+    "numpy": "2.0.2",
+    "python": "3.12.13",
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "device": "cpu",
+    "torch_threads": 2,
+    "git_commit": "d97cf13",
+    "timestamp_utc": "2026-09-23T02:14:44.633624+00:00"
+  }
+}

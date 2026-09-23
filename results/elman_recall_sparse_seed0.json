@@ -1,0 +1,44 @@
+{
+  "model": "elman",
+  "task": "recall",
+  "seed": 0,
+  "params": 78336,
+  "steps": 2500,
+  "batch": 64,
+  "lr": 0.003,
+  "train_ops": 64,
+  "eval_lengths": [
+    64,
+    128,
+    256,
+    512
+  ],
+  "chance_pct": 12.5,
+  "bos_token": 8,
+  "supervision": "recall_sparse",
+  "acc": {
+    "64": 12.939453125,
+    "128": 11.865234375,
+    "256": 12.40234375,
+    "512": 14.501953125
+  },
+  "eval_ms_per_program": {
+    "64": 1.2607334555663208,
+    "128": 2.244455089843722,
+    "256": 3.7728078652343733,
+    "512": 8.466310396972654
+  },
+  "train_ms_per_step": 648.375837180013,
+  "final_loss": 2.080365710258484,
+  "train_seconds": 1866.957819931,
+  "env": {
+    "torch": "2.10.0+cpu",
+    "numpy": "2.0.2",
+    "python": "3.12.13",
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "device": "cpu",
+    "torch_threads": 2,
+    "git_commit": "d97cf13",
+    "timestamp_utc": "2026-09-23T02:29:34.013469+00:00"
+  }
+}

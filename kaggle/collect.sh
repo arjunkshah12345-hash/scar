@@ -3,7 +3,7 @@
 # cost kernel (cc) when a CPU session slot frees. Run from repo root:
 #   nohup bash kaggle/collect.sh > /tmp/collect.log 2>&1 &
 cd "$(dirname "$0")/.." || exit 1
-TAGS="pd ps fd fs rc"
+TAGS="pd ps fd fs rc pc"
 CC_PUSHED=0
 DONE=""
 for i in $(seq 1 240); do   # up to 4 hours of 60s polls

@@ -1,32 +1,57 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>SCAR: state-carrier with attentive recall</title>
 <style>
-body{font-family:ui-sans-serif,system-ui;max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#111}
+body{font-family:ui-sans-serif,system-ui;max-width:960px;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#111}
 h1{font-size:1.5rem} h2{margin-top:2rem;font-size:1.1rem}
-table{border-collapse:collapse;width:100%;font-size:.9rem}
-td,th{padding:.4rem .6rem;border-bottom:1px solid #e5e5e5;text-align:right}
-td.name,th:first-child{text-align:left}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+td,th{padding:.4rem .5rem;border-bottom:1px solid #e5e5e5;text-align:right}
+td.name,th:first-child,th:nth-child(2){text-align:left}
+td.hot{color:#c2410c;font-weight:600}
 img{max-width:100%;border:1px solid #eee}
-.note{color:#666;font-size:.85rem}
+.note{color:#666;font-size:.8rem}
 </style></head><body>
 <h1>SCAR: state-carrier, attentive recall, and what supervision density does to architecture rankings</h1>
-<p>84 matched runs (~75–91K params): 7 architectures × parity/five × dense/sparse supervision × 3 seeds.
-All numbers below are machine-derived from <code>results/*.json</code> (see
-<a href="https://github.com/arjunkshah12345-hash/scar">the repo</a>).</p>
-<h2>Accuracy at the trained length, by task and supervision density</h2>
-<p class="note">Best accuracy each model reached across eval lengths 16–128 (mean of 3 seeds). Chance: parity 50%, five 20%.</p>
-<table><tr><th>model</th><th>params</th><th>parity dense</th><th>parity sparse</th><th>five dense</th><th>five sparse</th></tr>
-<tr><td class='name'>Elman RNN</td><td>76,416</td><td>100.0</td><td>50.2</td><td>100.0</td><td>100.0</td></tr>
-<tr><td class='name'>LSTM</td><td>75,648</td><td>81.2</td><td>50.4</td><td>100.0</td><td>100.0</td></tr>
-<tr><td class='name'>GRU</td><td>77,280</td><td>98.3</td><td>50.4</td><td>100.0</td><td>100.0</td></tr>
-<tr><td class='name'>Transformer</td><td>76,608</td><td>51.1</td><td>50.4</td><td>73.5</td><td>39.0</td></tr>
-<tr><td class='name'>TokenMerge (RLT abl.)</td><td>82,880</td><td>75.6</td><td>50.4</td><td>100.0</td><td>100.0</td></tr>
-<tr><td class='name'>RLT</td><td>75,000</td><td>78.4</td><td>50.4</td><td>100.0</td><td>99.9</td></tr>
-<tr><td class='name'>SCAR (ours)</td><td>77,896</td><td>97.9</td><td>50.4</td><td>100.0</td><td>100.0</td></tr></table>
-<h2>Training cost</h2>
-<img src="../charts/cost.png" alt="training cost per step relative to GRU">
-<h2>Accuracy by evaluation length</h2>
-<img src="../charts/accuracy_by_config.png" alt="accuracy by config">
+<p>135 matched runs (~75–92K params): 9 architectures (incl. two SCAR
+ablations) × parity/five/recall × dense/sparse supervision × 3 seeds.
+All numbers below are machine-derived from <code>results/*.json</code> via
+<code>aggregate.py</code> — see
+<a href="https://github.com/arjunkshah12345-hash/scar">the repo</a>.</p>
+<h2>Accuracy at the trained length</h2>
+<table><tr><th>model</th><th>params</th><th>parity_dense</th><th>parity_sparse</th><th>five_dense</th><th>five_sparse</th><th>recall_sparse</th></tr>
+<tr><td class='name'>Elman RNN</td><td>76,416</td><td class="hot">100.0±0.0 ≈</td><td class="">50.2±0.8</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="">13.2±0.3</td></tr>
+<tr><td class='name'>LSTM</td><td>75,648</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="">13.3±0.5</td></tr>
+<tr><td class='name'>GRU</td><td>77,280</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td></tr>
+<tr><td class='name'>Transformer (full causal)</td><td>76,608</td><td class="hot">89.5±7.7</td><td class="">50.6±0.4</td><td class="hot">73.3±8.6</td><td class="hot">59.8±7.3</td><td class="hot">100.0±0.0 ≈</td></tr>
+<tr><td class='name'>TokenMerge (RLT abl.)</td><td>82,880</td><td class="hot">100.0±0.0 ≈</td><td class="">50.6±0.4</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">41.9±50.3</td></tr>
+<tr><td class='name'>RLT</td><td>75,000</td><td class="hot">100.0±0.0 ≈</td><td class="">50.6±0.4</td><td class="hot">100.0±0.0 ≈</td><td class="hot">98.6±2.4 ≈</td><td class="hot">100.0±0.0 ≈</td></tr>
+<tr><td class='name'>SCAR</td><td>77,896</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td></tr>
+<tr><td class='name'>SCAR-carrier (no memory)</td><td>77,280</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td></tr>
+<tr><td class='name'>SCAR-no-recall</td><td>78,710</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td></tr></table><p class='note'>Accuracy at the TRAINED length (parity/five: 32 ops; recall: 64 ops), mean±std over seeds. '≈' marks cells within seed noise of the best model in that column — those differences are indistinguishable. Chance: parity 50%, five 20%, recall 12.5%.</p>
+<h2>Extrapolation to long inputs</h2>
+<table><tr><th>model</th><th>params</th><th>parity_dense</th><th>parity_sparse</th><th>five_dense</th><th>five_sparse</th><th>recall_sparse</th></tr>
+<tr><td class='name'>Elman RNN</td><td>76,416</td><td class="hot">100.0±0.0 ≈</td><td class="">51.2±1.0</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="">12.3±1.9</td></tr>
+<tr><td class='name'>LSTM</td><td>75,648</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="">12.6±1.7</td></tr>
+<tr><td class='name'>GRU</td><td>77,280</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">56.6±18.5</td></tr>
+<tr><td class='name'>Transformer (full causal)</td><td>76,608</td><td class="">49.3±1.6</td><td class="">49.8±1.8</td><td class="hot">31.5±6.7</td><td class="">29.0±7.6</td><td class="hot">77.5±19.7 ≈</td></tr>
+<tr><td class='name'>TokenMerge (RLT abl.)</td><td>82,880</td><td class="hot">100.0±0.0 ≈</td><td class="">51.1±1.2</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="">8.1±7.0</td></tr>
+<tr><td class='name'>RLT</td><td>75,000</td><td class="hot">100.0±0.1 ≈</td><td class="">50.2±1.8</td><td class="hot">100.0±0.0 ≈</td><td class="hot">99.9±0.2 ≈</td><td class="hot">100.0±0.0 ≈</td></tr>
+<tr><td class='name'>SCAR</td><td>77,896</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td></tr>
+<tr><td class='name'>SCAR-carrier (no memory)</td><td>77,280</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">56.6±18.5</td></tr>
+<tr><td class='name'>SCAR-no-recall</td><td>78,710</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">100.0±0.0 ≈</td><td class="hot">30.5±32.4</td></tr></table><p class='note'>EXTRAPOLATION: accuracy at the longest evaluated length (parity/five: 256 ops; recall: 512 ops), beyond the training length. No model was trained at this length.</p>
+<h2>Compute cost (dedicated serial benchmark)</h2>
+<table><tr><th>model</th><th>train ms/step</th><th>×GRU</th><th>inference ms/batch@128</th></tr>
+<tr><td class='name'>Elman RNN</td><td>23.3 [22.3–27.5]</td><td>0.75x</td><td>29.3 [27.0–48.4]</td></tr>
+<tr><td class='name'>LSTM</td><td>29.9 [28.7–47.2]</td><td>0.96x</td><td>36.3 [35.1–40.1]</td></tr>
+<tr><td class='name'>GRU</td><td>31.0 [30.0–46.8]</td><td>1.00x</td><td>33.2 [32.2–46.7]</td></tr>
+<tr><td class='name'>Transformer (full causal)</td><td>32.6 [31.6–35.2]</td><td>1.05x</td><td>102.5 [77.8–131.1]</td></tr>
+<tr><td class='name'>TokenMerge (RLT abl.)</td><td>217.6 [206.5–249.9]</td><td>7.03x</td><td>257.1 [246.6–316.2]</td></tr>
+<tr><td class='name'>RLT</td><td>243.7 [236.2–280.8]</td><td>7.87x</td><td>391.9 [367.9–442.2]</td></tr>
+<tr><td class='name'>SCAR</td><td>96.5 [92.6–127.0]</td><td>3.12x</td><td>104.8 [99.9–136.7]</td></tr>
+<tr><td class='name'>SCAR-carrier (no memory)</td><td>32.2 [31.2–41.1]</td><td>1.04x</td><td>33.7 [32.3–37.8]</td></tr>
+<tr><td class='name'>SCAR-no-recall</td><td>43.4 [42.4–63.4]</td><td>1.40x</td><td>64.7 [62.3–81.5]</td></tr></table><p class='note'>Dedicated serial benchmark (100 timed iters after 20 warmup, torch threads=2, batch=64, train len=32+BOS, infer len=128+BOS). Median [min–max] ms; treat as indicative ratios, not absolute numbers.</p>
+<h2>Accuracy vs evaluation length</h2>
+<img src="../charts/accuracy_by_config.png" alt="accuracy vs length, legacy tasks">
+<img src="../charts/recall_curves.png" alt="accuracy vs length, recall">
 <h2>The density swap</h2>
 <img src="../charts/density_swap.png" alt="dense vs sparse">
 <p class="note">Generated by build_site.py from data/summary.json; no hand-typed numbers.</p>
