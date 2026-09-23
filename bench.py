@@ -415,6 +415,10 @@ def main():
                     help="training length; default = 32 (parity/five), 64 (recall)")
     ap.add_argument("--density", choices=["dense", "sparse"], default=None,
                     help="supervision density; default = task legacy (parity dense, five/recall sparse)")
+    ap.add_argument("--curriculum", action="store_true",
+                    help="sparse supervision only: train lengths grow 4->16->32 over the "
+                         "first 60%% of steps, giving the model learnable sparse targets "
+                         "before the full 32-bit chain; eval protocol unchanged")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", default="results")
     args = ap.parse_args()
@@ -470,9 +474,23 @@ def main():
     losses, step_ms = [], []
     model.train()
     t_start = time.perf_counter()
+    # curriculum schedule (sparse only): grow the train length 4 -> 8 -> 16 -> 32
+    # over the first 60% of steps. Rationale: sparse parity at ops=32 from scratch
+    # is a needle-in-haystack optimization problem -- the single end-of-chain
+    # gradient signal is too rare to escape the 50/50 plateau within budget
+    # (verified: dense parity solves in <500 steps, sparse stalls at ln(2) for
+    # 2500 steps). Short chains still carry sparse learnable signal.
+    ops_now = args.train_ops
+    if args.curriculum:
+        sched_ops = [(4, 0.0), (8, 0.2), (16, 0.4), (32, 0.6)]
     for step in range(args.steps):
         t0 = time.perf_counter()
-        seq, ans, run = make_batch(args.task, args.train_ops, args.batch, train_rng, auto)
+        if args.curriculum:
+            frac = step / max(args.steps, 1)
+            for ops_c, start in sched_ops:
+                if frac >= start:
+                    ops_now = ops_c
+        seq, ans, run = make_batch(args.task, ops_now, args.batch, train_rng, auto)
         x = add_bos(seq, BOS)   # same convention as evaluation
         logits = model(x)   # (B, T, vocab)
         if args.density == "dense":
@@ -503,6 +521,7 @@ def main():
         "model": args.model, "task": args.task, "seed": args.seed,
         "params": nparams, "steps": args.steps, "batch": args.batch,
         "lr": args.lr, "train_ops": args.train_ops,
+        "curriculum": bool(args.curriculum),
         "eval_lengths": sorted(eval_sets), "chance_pct": TASK_CHANCE[args.task],
         "bos_token": BOS,
         "supervision": f"{args.task}_{args.density}",

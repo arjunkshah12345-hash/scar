@@ -13,6 +13,7 @@ MODELS = ["elman", "lstm", "gru", "transformer", "token_merge", "rlt",
 CONFIGS = {
     "parity_dense": ("parity", "dense"),
     "parity_sparse": ("parity", "sparse"),
+    "parity_sparse_curriculum": ("parity", "sparse"),
     "five_dense": ("five", "dense"),
     "five_sparse": ("five", "sparse"),
     "recall_sparse": ("recall", "sparse"),
@@ -26,10 +27,12 @@ ap.add_argument("--workers", type=int, default=7)
 args = ap.parse_args()
 
 selected = args.configs.split(",")
-jobs = [(CONFIGS[c], m, s) for c in selected for m in MODELS for s in SEEDS]
+jobs = [(c, CONFIGS[c], m, s) for c in selected for m in MODELS for s in SEEDS]
+
+CURRICULUM_CONFIGS = {"parity_sparse_curriculum"}
 
 def run(job):
-    (task, density), model, seed = job
+    config, (task, density), model, seed = job
     tag = f"{model}_{task}_{density}_seed{seed}"
     out = os.path.join("results", f"{tag}.json")
     if os.path.exists(out):
@@ -37,10 +40,13 @@ def run(job):
         return
     log = open(f"logs/{tag}.log", "w")
     t0 = time.time()
+    cmd = [sys.executable, "bench.py", "--model", model, "--task", task,
+           "--density", density, "--seed", str(seed), "--steps", str(STEPS),
+           "--device", "cpu", "--out", "results"]
+    if config in CURRICULUM_CONFIGS:
+        cmd.append("--curriculum")
     rc = subprocess.run(
-        [sys.executable, "bench.py", "--model", model, "--task", task,
-         "--density", density, "--seed", str(seed), "--steps", str(STEPS),
-         "--device", "cpu", "--out", "results"],
+        cmd,
         stdout=log, stderr=subprocess.STDOUT,
     ).returncode
     status = "done" if rc == 0 else f"FAILED rc={rc}"
