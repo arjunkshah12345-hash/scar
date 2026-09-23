@@ -13,13 +13,15 @@ workers = "4"  # 4 vCPU on Kaggle CPU sessions
 # resume-safe: run_all.py skips result files that already exist
 subprocess.run([sys.executable, "run_all.py", "--configs", configs, "--workers", workers], check=True)
 
-DO_COST = True
-if DO_COST:
-    # dedicated serial cost benchmark (single process, warmup + repeated timed iters)
-    subprocess.run([sys.executable, "benchmark_cost.py", "--out", "data/cost_bench.json"], check=True)
-
+# save sweep results FIRST; the optional cost benchmark must never jeopardize them
 shutil.copytree("results", "/kaggle/working/results", dirs_exist_ok=True)
 shutil.copytree("logs", "/kaggle/working/logs", dirs_exist_ok=True)
+
+DO_COST = False  # cost benchmark runs in its own kernel (scar-sweep-cc)
 if DO_COST:
-    shutil.copy("data/cost_bench.json", "/kaggle/working/cost_bench.json")
+    # dedicated serial cost benchmark; non-fatal — results are already saved
+    rc = subprocess.run([sys.executable, "benchmark_cost.py",
+                         "--out", "data/cost_bench.json"]).returncode
+    if rc == 0:
+        shutil.copy("data/cost_bench.json", "/kaggle/working/cost_bench.json")
 print("sweep complete; results copied to /kaggle/working/results")
