@@ -26,5 +26,6 @@
     16,
     32
   ],
-  "eval_examples": 4096
+  "eval_examples": 4096,
+  "expected_count": 21
 }
