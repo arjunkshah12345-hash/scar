@@ -2,8 +2,9 @@
 
 Do not upload the paper until every Study 2 family is complete and validated.
 
-- [ ] `study2_results/` contains only artifacts whose `git_commit` matches the
-      frozen `research/v3` release commit.
+- [ ] Every Study 2 family has internally consistent artifact/manifest
+      commits, and each recorded commit is an ancestor of the published
+      `research/v3` head; rerun any family if behavior-changing code differs.
 - [ ] Every declared family passes `python3 -m study2.validate` with its exact
       expected count; manifests are provenance metadata, not result rows.
 - [ ] `python3 -m study2.analyze study2_results --out analysis/study2` has

@@ -39,6 +39,9 @@ collect_one() {
   fi
   kaggle kernels output "aks1321/$kernel" -p "$tmp" --force >/dev/null 2>&1 || true
   find "$tmp" -type f -name 'v3*.json' -exec cp {} "$dest"/ \;
+  local manifest
+  manifest="$(find "$tmp" -type f -path "*/study2_results/$family/manifest.json" | head -n 1)"
+  if [[ -n "$manifest" ]]; then cp "$manifest" "$dest/manifest.json"; fi
   count="$(find "$dest" -maxdepth 1 -type f -name 'v3*.json' | wc -l | tr -d ' ')"
   echo "$family: $count/$expected artifacts"
   if [[ "$count" == "$expected" ]]; then
