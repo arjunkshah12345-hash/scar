@@ -102,10 +102,18 @@ def test_study2_validator_excludes_provenance_manifest(tmp_path):
         },
     }
     (tmp_path / "v3A_demo_gru_seed0.json").write_text(json.dumps(row))
-    (tmp_path / "manifest.json").write_text(json.dumps({"study": "study2"}))
+    (tmp_path / "manifest.json").write_text(json.dumps({"study": "study2", "git_commit": "abc"}))
     from study2.validate import validate_directory
 
     assert len(validate_directory(tmp_path, expected_count=1)) == 1
+
+    (tmp_path / "manifest.json").write_text(json.dumps({"study": "study2", "git_commit": "different"}))
+    try:
+        validate_directory(tmp_path, expected_count=1)
+    except ValueError as exc:
+        assert "does not match manifest" in str(exc)
+    else:
+        raise AssertionError("manifest commit mismatch was accepted")
 
 
 def test_bootstrap_summary_is_deterministic_and_bounded():

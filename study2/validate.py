@@ -57,6 +57,12 @@ def validate_artifact(row: dict, path: Path | None = None, expected_study="study
 
 def validate_directory(directory: str | Path, expected_count: int | None = None) -> list[Path]:
     root = Path(directory)
+    expected_commit = None
+    manifest_path = root / "manifest.json"
+    if manifest_path.exists():
+        with manifest_path.open() as f:
+            manifest = json.load(f)
+        expected_commit = manifest.get("git_commit")
     # Drivers keep a provenance manifest beside the per-run artifacts. The
     # manifest is intentionally not an artifact row and must not count toward
     # the expected run total.
@@ -68,6 +74,11 @@ def validate_directory(directory: str | Path, expected_count: int | None = None)
         with path.open() as f:
             row = json.load(f)
         validate_artifact(row, path)
+        if expected_commit is not None and row["git_commit"] != expected_commit:
+            raise ValueError(
+                f"{path}: git_commit {row['git_commit']!r} does not match "
+                f"manifest {expected_commit!r}"
+            )
         key = (row["experiment_id"], row["model"], row["seed"])
         if key in seen:
             raise ValueError(f"{path}: duplicate artifact key {key}")
