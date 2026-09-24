@@ -404,6 +404,10 @@ def evaluate(model, eval_sets, device, bos):
 
 
 def main():
+    if not os.path.isdir("/kaggle/working"):
+        raise SystemExit(
+            "Refusing local training. Run the benchmark through a Kaggle CPU kernel."
+        )
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--task", required=True, choices=["parity", "five", "recall"])

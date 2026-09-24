@@ -15,16 +15,22 @@ for i in $(seq 1 240); do   # up to 4 hours of 60s polls
       mkdir -p "/tmp/out_$tag"
       kaggle kernels output "aks1321/scar-sweep-$tag" -p "/tmp/out_$tag" >/dev/null 2>&1
       # results may be at output root or under scar/results
-      for base in "/tmp/out_$tag/results" "/tmp/out_$tag/scar/results"; do
-        [ -d "$base" ] && cp "$base"/*.json results/ 2>/dev/null && echo "[$(date +%H:%M)] $tag: copied results from $base"
+      dest="results"
+      [ "$tag" = "pc" ] && dest="results_curriculum"
+      mkdir -p "$dest"
+      for base in "/tmp/out_$tag/results" "/tmp/out_$tag/scar/results" "/tmp/out_$tag/results_curriculum" "/tmp/out_$tag/scar/results_curriculum"; do
+        [ -d "$base" ] && cp "$base"/*.json "$dest"/ 2>/dev/null && echo "[$(date +%H:%M)] $tag: copied results from $base to $dest"
       done
       DONE="$DONE,$tag"
     elif echo "$st" | grep -q 'ERROR'; then
       echo "[$(date +%H:%M)] $tag: kernel ERROR - inspect output manually"
       mkdir -p "/tmp/out_$tag"
       kaggle kernels output "aks1321/scar-sweep-$tag" -p "/tmp/out_$tag" >/dev/null 2>&1
-      for base in "/tmp/out_$tag/results" "/tmp/out_$tag/scar/results"; do
-        [ -d "$base" ] && cp "$base"/*.json results/ 2>/dev/null && echo "[$(date +%H:%M)] $tag: copied partial results from $base"
+      dest="results"
+      [ "$tag" = "pc" ] && dest="results_curriculum"
+      mkdir -p "$dest"
+      for base in "/tmp/out_$tag/results" "/tmp/out_$tag/scar/results" "/tmp/out_$tag/results_curriculum" "/tmp/out_$tag/scar/results_curriculum"; do
+        [ -d "$base" ] && cp "$base"/*.json "$dest"/ 2>/dev/null && echo "[$(date +%H:%M)] $tag: copied partial results from $base to $dest"
       done
       DONE="$DONE,$tag"
     fi

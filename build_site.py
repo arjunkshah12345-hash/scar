@@ -7,8 +7,8 @@ Statistics discipline:
   regime.
 - A separate table reports the LONGEST evaluated length, explicitly labeled
   as extrapolation beyond the training length.
-- Differences smaller than the seed std are not ranked; cells within seed
-  noise of the best model are flagged with '≈'.
+- Cells close to the best mean are flagged with '≈' as a descriptive aid only;
+  three seeds are not enough for a statistical significance claim.
 """
 import html
 import json
@@ -97,8 +97,8 @@ def main():
     trained_tbl = table(
         s, CONFIGS, lambda c: TRAIN_LEN[c.split("_")[0]],
         "Accuracy at the TRAINED length (parity/five: 32 ops; recall: 64 ops), "
-        "mean±std over seeds. '≈' marks cells within seed noise of the best "
-        "model in that column — those differences are indistinguishable. "
+        "mean±std over seeds. '≈' marks a descriptive near-best cell within "
+        "the observed three-seed spread; it is not a statistical test. "
         "Chance: parity 50%, five 20%, recall 12.5%.")
     extrap_tbl = table(
         s, CONFIGS, lambda c: MAX_LEN[c.split("_")[0]],

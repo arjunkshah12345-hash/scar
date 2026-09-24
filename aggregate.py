@@ -18,11 +18,14 @@ summary = {}
 for (model, supervision), rs in sorted(rows.items()):
     lengths = sorted(int(l) for l in rs[0]["acc"])
     train_ops = rs[0]["train_ops"]
+    curriculum_values = sorted({bool(r.get("curriculum", False)) for r in rs})
+    curriculum = curriculum_values[0] if len(curriculum_values) == 1 else curriculum_values
     summary[f"{model}|{supervision}"] = {
         "n_seeds": len(rs),
         "params": sorted({r["params"] for r in rs}),
         "steps": rs[0]["steps"], "batch": rs[0]["batch"], "lr": rs[0].get("lr"),
         "train_ops": train_ops,
+        "curriculum": curriculum,
         "chance_pct": rs[0].get("chance_pct"),
         "trained_length_in_eval": train_ops in lengths,
         "acc_by_len": {str(l): {

@@ -1,0 +1,48 @@
+{
+  "model": "elman",
+  "task": "parity",
+  "seed": 1,
+  "params": 76416,
+  "steps": 2500,
+  "batch": 64,
+  "lr": 0.003,
+  "train_ops": 32,
+  "curriculum": true,
+  "eval_lengths": [
+    16,
+    32,
+    64,
+    128,
+    256
+  ],
+  "chance_pct": 50.0,
+  "bos_token": 3,
+  "supervision": "parity_sparse",
+  "acc": {
+    "16": 49.072265625,
+    "32": 50.1953125,
+    "64": 50.244140625,
+    "128": 49.90234375,
+    "256": 51.318359375
+  },
+  "eval_ms_per_program": {
+    "16": 0.5096614208984218,
+    "32": 0.5618134335937386,
+    "64": 1.1716679760742643,
+    "128": 1.9038553833007898,
+    "256": 3.6743170874023456
+  },
+  "train_ms_per_step": 493.6418418759961,
+  "final_loss": 0.6945743197202683,
+  "train_seconds": 601.3225185370001,
+  "env": {
+    "torch": "2.10.0+cpu",
+    "numpy": "2.0.2",
+    "python": "3.12.13",
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "device": "cpu",
+    "torch_threads": 2,
+    "git_commit": "f8540fa",
+    "timestamp_utc": "2026-09-23T04:47:54.470909+00:00"
+  }
+}

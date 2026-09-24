@@ -8,6 +8,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -79,6 +80,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -150,6 +152,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -221,67 +224,68 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 49.3,
-        "std": 1.09,
-        "min": 48.34,
-        "max": 50.49,
+        "mean": 50.23,
+        "std": 0.86,
+        "min": 49.27,
+        "max": 50.93,
         "seeds": [
           50.49,
-          49.07,
-          48.34
+          50.93,
+          49.27
         ]
       },
       "32": {
-        "mean": 50.18,
-        "std": 0.85,
-        "min": 49.32,
-        "max": 51.03,
+        "mean": 49.32,
+        "std": 0.49,
+        "min": 48.83,
+        "max": 49.8,
         "seeds": [
           49.32,
-          50.2,
-          51.03
+          49.8,
+          48.83
         ]
       },
       "64": {
-        "mean": 49.56,
-        "std": 0.61,
-        "min": 49.07,
-        "max": 50.24,
+        "mean": 50.0,
+        "std": 0.79,
+        "min": 49.37,
+        "max": 50.88,
         "seeds": [
           49.37,
-          50.24,
-          49.07
+          49.76,
+          50.88
         ]
       },
       "128": {
-        "mean": 49.37,
-        "std": 0.62,
+        "mean": 49.59,
+        "std": 0.79,
         "min": 48.68,
-        "max": 49.9,
+        "max": 50.1,
         "seeds": [
           48.68,
-          49.9,
-          49.51
+          50.1,
+          50.0
         ]
       },
       "256": {
-        "mean": 51.22,
-        "std": 1.03,
-        "min": 50.15,
+        "mean": 50.72,
+        "std": 1.82,
+        "min": 48.68,
         "max": 52.2,
         "seeds": [
           52.2,
-          51.32,
-          50.15
+          48.68,
+          51.27
         ]
       }
     },
-    "train_ms_per_step": 500.5,
-    "train_seconds": 665.8
+    "train_ms_per_step": 165.1,
+    "train_seconds": 384.2
   },
   "elman|recall_sparse": {
     "n_seeds": 3,
@@ -292,6 +296,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -352,6 +357,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -423,6 +429,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -494,6 +501,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -565,67 +573,68 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.41,
+        "std": 1.3,
+        "min": 49.07,
+        "max": 51.66,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          50.49,
+          49.07,
+          51.66
         ]
       },
       "32": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.32,
+          50.2,
+          48.97
         ]
       },
       "64": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.18,
+        "std": 0.78,
+        "min": 49.37,
+        "max": 50.93,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.37,
+          50.24,
+          50.93
         ]
       },
       "128": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.69,
+        "std": 0.92,
+        "min": 48.68,
+        "max": 50.49,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          48.68,
+          49.9,
+          50.49
         ]
       },
       "256": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 51.12,
+        "std": 1.18,
+        "min": 49.85,
+        "max": 52.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          52.2,
+          51.32,
+          49.85
         ]
       }
     },
-    "train_ms_per_step": 209.1,
-    "train_seconds": 326.1
+    "train_ms_per_step": 203.6,
+    "train_seconds": 473.4
   },
   "gru|recall_sparse": {
     "n_seeds": 3,
@@ -636,6 +645,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -696,6 +706,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -767,6 +778,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -838,6 +850,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -909,67 +922,68 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.41,
+        "std": 1.3,
+        "min": 49.07,
+        "max": 51.66,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          50.49,
+          49.07,
+          51.66
         ]
       },
       "32": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.32,
+          50.2,
+          48.97
         ]
       },
       "64": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.18,
+        "std": 0.78,
+        "min": 49.37,
+        "max": 50.93,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.37,
+          50.24,
+          50.93
         ]
       },
       "128": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.69,
+        "std": 0.92,
+        "min": 48.68,
+        "max": 50.49,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          48.68,
+          49.9,
+          50.49
         ]
       },
       "256": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 51.12,
+        "std": 1.18,
+        "min": 49.85,
+        "max": 52.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          52.2,
+          51.32,
+          49.85
         ]
       }
     },
-    "train_ms_per_step": 177.5,
-    "train_seconds": 314.8
+    "train_ms_per_step": 154.4,
+    "train_seconds": 451.6
   },
   "lstm|recall_sparse": {
     "n_seeds": 3,
@@ -980,6 +994,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1040,6 +1055,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1111,6 +1127,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1182,6 +1199,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1253,29 +1271,30 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 48.97,
-        "std": 0.59,
-        "min": 48.34,
-        "max": 49.51,
+        "mean": 50.41,
+        "std": 1.3,
+        "min": 49.07,
+        "max": 51.66,
         "seeds": [
-          49.51,
+          50.49,
           49.07,
-          48.34
+          51.66
         ]
       },
       "32": {
-        "mean": 50.63,
-        "std": 0.42,
-        "min": 50.2,
-        "max": 51.03,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          50.68,
+          49.32,
           50.2,
-          51.03
+          48.97
         ]
       },
       "64": {
@@ -1290,30 +1309,30 @@
         ]
       },
       "128": {
-        "mean": 49.76,
-        "std": 0.95,
+        "mean": 49.69,
+        "std": 0.92,
         "min": 48.68,
         "max": 50.49,
         "seeds": [
           48.68,
-          50.1,
+          49.9,
           50.49
         ]
       },
       "256": {
-        "mean": 50.24,
-        "std": 1.79,
-        "min": 48.68,
+        "mean": 51.12,
+        "std": 1.18,
+        "min": 49.85,
         "max": 52.2,
         "seeds": [
           52.2,
-          48.68,
+          51.32,
           49.85
         ]
       }
     },
-    "train_ms_per_step": 1614.0,
-    "train_seconds": 2629.5
+    "train_ms_per_step": 1398.2,
+    "train_seconds": 3569.7
   },
   "rlt|recall_sparse": {
     "n_seeds": 3,
@@ -1324,6 +1343,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1384,6 +1404,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1455,6 +1476,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1526,6 +1548,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1597,67 +1620,68 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.41,
+        "std": 1.3,
+        "min": 49.07,
+        "max": 51.66,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          50.49,
+          49.07,
+          51.66
         ]
       },
       "32": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.32,
+          50.2,
+          48.97
         ]
       },
       "64": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.18,
+        "std": 0.78,
+        "min": 49.37,
+        "max": 50.93,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.37,
+          50.24,
+          50.93
         ]
       },
       "128": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.69,
+        "std": 0.92,
+        "min": 48.68,
+        "max": 50.49,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          48.68,
+          49.9,
+          50.49
         ]
       },
       "256": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 51.12,
+        "std": 1.18,
+        "min": 49.85,
+        "max": 52.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          52.2,
+          51.32,
+          49.85
         ]
       }
     },
-    "train_ms_per_step": 551.7,
-    "train_seconds": 909.6
+    "train_ms_per_step": 558.8,
+    "train_seconds": 1484.2
   },
   "scar|recall_sparse": {
     "n_seeds": 3,
@@ -1668,6 +1692,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1728,6 +1753,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1799,6 +1825,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1870,6 +1897,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -1941,67 +1969,68 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.41,
+        "std": 1.3,
+        "min": 49.07,
+        "max": 51.66,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          50.49,
+          49.07,
+          51.66
         ]
       },
       "32": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.32,
+          50.2,
+          48.97
         ]
       },
       "64": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.18,
+        "std": 0.78,
+        "min": 49.37,
+        "max": 50.93,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.37,
+          50.24,
+          50.93
         ]
       },
       "128": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.69,
+        "std": 0.92,
+        "min": 48.68,
+        "max": 50.49,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          48.68,
+          49.9,
+          50.49
         ]
       },
       "256": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 51.12,
+        "std": 1.18,
+        "min": 49.85,
+        "max": 52.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          52.2,
+          51.32,
+          49.85
         ]
       }
     },
-    "train_ms_per_step": 214.9,
-    "train_seconds": 313.6
+    "train_ms_per_step": 161.9,
+    "train_seconds": 451.1
   },
   "scar_carrier|recall_sparse": {
     "n_seeds": 3,
@@ -2012,6 +2041,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2072,6 +2102,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2143,6 +2174,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2214,6 +2246,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2285,67 +2318,68 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.47,
+        "std": 1.2,
+        "min": 49.27,
+        "max": 51.66,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          50.49,
+          49.27,
+          51.66
         ]
       },
       "32": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.32,
+          50.2,
+          48.97
         ]
       },
       "64": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 50.18,
+        "std": 0.78,
+        "min": 49.37,
+        "max": 50.93,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          49.37,
+          50.24,
+          50.93
         ]
       },
       "128": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 49.69,
+        "std": 0.92,
+        "min": 48.68,
+        "max": 50.49,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          48.68,
+          49.9,
+          50.49
         ]
       },
       "256": {
-        "mean": 100.0,
-        "std": 0.0,
-        "min": 100.0,
-        "max": 100.0,
+        "mean": 51.12,
+        "std": 1.18,
+        "min": 49.85,
+        "max": 52.2,
         "seeds": [
-          100.0,
-          100.0,
-          100.0
+          52.2,
+          51.32,
+          49.85
         ]
       }
     },
-    "train_ms_per_step": 171.7,
-    "train_seconds": 323.6
+    "train_ms_per_step": 58.1,
+    "train_seconds": 346.0
   },
   "scar_norecall|recall_sparse": {
     "n_seeds": 3,
@@ -2356,6 +2390,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2416,6 +2451,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2487,6 +2523,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2558,6 +2595,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2629,40 +2667,41 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 48.97,
-        "std": 0.59,
-        "min": 48.34,
-        "max": 49.51,
+        "mean": 50.41,
+        "std": 1.3,
+        "min": 49.07,
+        "max": 51.66,
         "seeds": [
-          49.51,
+          50.49,
           49.07,
-          48.34
+          51.66
         ]
       },
       "32": {
-        "mean": 50.63,
-        "std": 0.42,
-        "min": 50.2,
-        "max": 51.03,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          50.68,
+          49.32,
           50.2,
-          51.03
+          48.97
         ]
       },
       "64": {
-        "mean": 49.56,
-        "std": 0.61,
-        "min": 49.07,
-        "max": 50.24,
+        "mean": 50.18,
+        "std": 0.78,
+        "min": 49.37,
+        "max": 50.93,
         "seeds": [
           49.37,
           50.24,
-          49.07
+          50.93
         ]
       },
       "128": {
@@ -2688,8 +2727,8 @@
         ]
       }
     },
-    "train_ms_per_step": 1454.6,
-    "train_seconds": 2293.6
+    "train_ms_per_step": 1170.6,
+    "train_seconds": 2950.4
   },
   "token_merge|recall_sparse": {
     "n_seeds": 3,
@@ -2700,6 +2739,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2760,6 +2800,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2831,6 +2872,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 20.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2902,6 +2944,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
@@ -2973,67 +3016,68 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 32,
+    "curriculum": false,
     "chance_pct": 50.0,
     "trained_length_in_eval": true,
     "acc_by_len": {
       "16": {
-        "mean": 48.97,
-        "std": 0.59,
-        "min": 48.34,
-        "max": 49.51,
+        "mean": 50.41,
+        "std": 1.3,
+        "min": 49.07,
+        "max": 51.66,
         "seeds": [
-          49.51,
+          50.49,
           49.07,
-          48.34
+          51.66
         ]
       },
       "32": {
-        "mean": 50.63,
-        "std": 0.42,
-        "min": 50.2,
-        "max": 51.03,
+        "mean": 49.5,
+        "std": 0.63,
+        "min": 48.97,
+        "max": 50.2,
         "seeds": [
-          50.68,
+          49.32,
           50.2,
-          51.03
+          48.97
         ]
       },
       "64": {
-        "mean": 49.98,
-        "std": 0.81,
-        "min": 49.07,
-        "max": 50.63,
+        "mean": 50.18,
+        "std": 0.78,
+        "min": 49.37,
+        "max": 50.93,
         "seeds": [
-          50.63,
+          49.37,
           50.24,
-          49.07
+          50.93
         ]
       },
       "128": {
-        "mean": 50.24,
-        "std": 0.95,
-        "min": 49.51,
-        "max": 51.32,
+        "mean": 49.69,
+        "std": 0.92,
+        "min": 48.68,
+        "max": 50.49,
         "seeds": [
-          51.32,
+          48.68,
           49.9,
-          49.51
+          50.49
         ]
       },
       "256": {
-        "mean": 49.76,
-        "std": 1.79,
-        "min": 47.8,
-        "max": 51.32,
+        "mean": 51.12,
+        "std": 1.18,
+        "min": 49.85,
+        "max": 52.2,
         "seeds": [
-          47.8,
+          52.2,
           51.32,
-          50.15
+          49.85
         ]
       }
     },
-    "train_ms_per_step": 177.0,
-    "train_seconds": 366.5
+    "train_ms_per_step": 160.8,
+    "train_seconds": 483.8
   },
   "transformer|recall_sparse": {
     "n_seeds": 3,
@@ -3044,6 +3088,7 @@
     "batch": 64,
     "lr": 0.003,
     "train_ops": 64,
+    "curriculum": false,
     "chance_pct": 12.5,
     "trained_length_in_eval": true,
     "acc_by_len": {

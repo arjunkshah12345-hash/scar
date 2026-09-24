@@ -40,5 +40,6 @@
     "torch_threads": 2,
     "git_commit": "d97cf13",
     "timestamp_utc": "2026-09-23T07:07:01.096829+00:00"
-  }
+  },
+  "curriculum": false
 }
