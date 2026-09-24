@@ -34,6 +34,13 @@ def test_associative_recall_kernel_is_separate_from_study1():
     assert "study2_results" in source
 
 
+def test_ratio_kernels_have_distinct_experiment_families():
+    for name, train_ops in (("ratio32", "train32"), ("ratio128", "train128")):
+        driver = (ROOT / "kaggle" / name / "scar_train.py").read_text()
+        assert "study2.validate" in driver
+        assert f"v3B_recall_{train_ops}" in driver
+
+
 def test_study2_validator_accepts_complete_shape():
     row = {
         "study": "study2", "protocol_version": "v3.0",
