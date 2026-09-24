@@ -71,6 +71,7 @@ python3 -m study2.analyze "$DEST" --out analysis/study2
 python3 study2/state_memory.py --out analysis/study2/state_memory.json
 python3 make_paper.py
 (cd paper && tectonic paper.tex >/dev/null)
+./scripts/build_arxiv_package.sh
 [[ -z "$(git status --porcelain)" ]] \
   || die "generated analysis or paper differs; commit the regenerated release before publishing"
 git diff --check "origin/$BASE_BRANCH...HEAD"
