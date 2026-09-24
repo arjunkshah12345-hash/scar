@@ -67,6 +67,27 @@ Training runs on Kaggle CPU (`kaggle/`, one kernel per task-density config plus
 a cost-benchmark kernel) — tiny sequential models are ~13x faster on CPU than
 GPU. Code + results live here.
 
+## Study 2 protocol (research/v3)
+
+The follow-up study is preregistered in
+[`EXPERIMENT_PROTOCOL_V3.md`](EXPERIMENT_PROTOCOL_V3.md). It keeps the v2
+release immutable and adds cloud-only probes for delayed recall, train/test
+length ratios, associative key/value recall, selective copy with capacity and
+distractor-entropy conditions, memory-slot mechanisms, and frozen-memory
+interventions. Every Study 2 driver clones the exact `research/v3` commit and
+writes provenance-rich JSON under `study2_results/`; no optimizer step is
+allowed on the local machine.
+
+After the Kaggle kernels finish, collect and validate them locally with:
+
+```
+bash kaggle/collect_study2.sh
+python3 -m study2.analyze study2_results --out analysis/study2
+```
+
+Incomplete or failed kernel outputs must not be included in paper tables. The
+paper is regenerated only after the complete artifact families pass validation.
+
 ## Results
 `results/` holds the v2 run JSONs; `data/summary.json` the aggregation;
 `charts/` the figures; `site/` the generated result site; `paper/` the paper
