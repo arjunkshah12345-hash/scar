@@ -2,7 +2,8 @@
 
 The paper is data-driven: all result tables, outcome-dependent prose, figures,
 and benchmark counts come from ``data/summary.json`` and
-``data/cost_bench.json``. Run ``aggregate.py`` and ``make_charts.py`` first.
+``data/cost_bench.json``. Run ``aggregate.py``, ``make_charts.py``, and the
+Study 2 collector/analysis first.
 """
 import json
 import os
@@ -267,6 +268,167 @@ def copy_figures():
         source = os.path.join("charts", filename)
         if os.path.exists(source):
             shutil.copy2(source, os.path.join("paper/figures", filename))
+    study2_dir = "analysis/study2"
+    if os.path.isdir(study2_dir):
+        for filename in os.listdir(study2_dir):
+            if filename.endswith(".png"):
+                shutil.copy2(
+                    os.path.join(study2_dir, filename),
+                    os.path.join("paper/figures", "study2_" + filename),
+                )
+
+
+def s2_value(summary, family, model, context):
+    return summary.get(family, {}).get(model, {}).get(str(context))
+
+
+def s2_fmt(summary, family, model, context):
+    value = s2_value(summary, family, model, context)
+    if not value:
+        return "--"
+    return f"{value['mean']:.1f}\\,$\\pm$\\,{value['std']:.1f}\\%"
+
+
+def s2_table(summary, family, context, caption, label, models=None):
+    models = models or [
+        "gru", "lstm", "transformer", "rlt", "scar",
+        "scar_carrier", "scar_norecall",
+    ]
+    rows = []
+    for model in models:
+        if s2_value(summary, family, model, context):
+            rows.append(
+                f"{bs.NAMES.get(model, model)} & "
+                f"{s2_fmt(summary, family, model, context)} \\\\"
+            )
+    if not rows:
+        return ""
+    return (
+        "\\begin{table}[t]\n\\centering\\small\n"
+        f"\\caption{{{caption}}}\\label{{{label}}}\n"
+        "\\begin{tabular}{l c}\n\\toprule\n"
+        "Model & Accuracy (\\%) \\\\\n\\midrule\n"
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n\\end{table}\n"
+    )
+
+
+def s2_figure(filename, caption, label):
+    path = os.path.join("paper/figures", "study2_" + filename)
+    if not os.path.exists(path):
+        return ""
+    return (
+        "\\begin{figure}[t]\n\\centering\n"
+        + "\\includegraphics[width=\\linewidth]{figures/study2_" + filename + "}\n"
+        + "\\caption{" + caption + "}\\label{" + label + "}\n"
+        + "\\end{figure}\n"
+    )
+
+
+def study2_section():
+    summary_path = "analysis/study2/summary.json"
+    required = {
+        "recall_length", "associative_recall", "ratio32", "ratio128",
+        "mechanism_slots1", "mechanism_decay_learned_multi",
+        "selective_copy_entropy16", "selective_copy_entropy2",
+        "intervention",
+    }
+    if not os.path.exists(summary_path):
+        raise RuntimeError(
+            "Study 2 analysis is missing; collect and analyze Kaggle results first"
+        )
+    with open(summary_path) as f:
+        summary = json.load(f)
+    missing = sorted(required - set(summary))
+    if missing:
+        raise RuntimeError(
+            "Study 2 analysis is incomplete: missing " + ", ".join(missing)
+        )
+    exact_path = "analysis/study2/exact_sequence_summary.json"
+    intervention_path = "analysis/study2/intervention_summary.json"
+    if not os.path.exists(exact_path) or not os.path.exists(intervention_path):
+        raise RuntimeError("Study 2 exact-sequence or intervention analysis is missing")
+    with open(exact_path) as f:
+        exact = json.load(f)
+    with open(intervention_path) as f:
+        interventions = json.load(f)
+
+    recall = s2_table(
+        summary,
+        "recall_length",
+        4096,
+        "Study 2A delayed-recall accuracy at 4,096 operations; models were trained at 64 operations. Mean$\\pm$std over five seeds.",
+        "tab:study2-recall",
+    )
+    assoc = s2_fmt(summary, "associative_recall", "scar", 32)
+    ratio32 = s2_fmt(summary, "ratio32", "scar", 512)
+    ratio128 = s2_fmt(summary, "ratio128", "scar", 2048)
+    copy_high = exact.get("selective_copy_entropy16", {}).get("scar", {}).get("32")
+    copy_low = exact.get("selective_copy_entropy2", {}).get("scar", {}).get("32")
+    copy_high_text = (
+        "--" if not copy_high
+        else f"{copy_high['mean']:.1f}\\,$\\pm$\\,{copy_high['std']:.1f}\\%"
+    )
+    copy_low_text = (
+        "--" if not copy_low
+        else f"{copy_low['mean']:.1f}\\,$\\pm$\\,{copy_low['std']:.1f}\\%"
+    )
+
+    slot_values = []
+    for family, model_values in summary.items():
+        if family.startswith("mechanism_slots") and "scar" in model_values:
+            value = model_values["scar"].get("512")
+            if value:
+                slots = int(family[len("mechanism_slots"):])
+                slot_values.append((slots, value["mean"]))
+    slot_values.sort()
+    slot_text = ", ".join(
+        f"{slots}: {value:.1f}\\%" for slots, value in slot_values
+    )
+
+    intervention_values = interventions.get("intervention", {}).get("scar", {})
+    at512 = []
+    for name, values in sorted(intervention_values.items()):
+        if "512" in values:
+            at512.append(f"{name} {values['512']['mean']:.1f}\\%")
+    intervention_text = ", ".join(at512) if at512 else "--"
+
+    return (
+        "The preregistered follow-up separates the original recall headline from "
+        "stress tests of length, training context, retrieval type, capacity, and "
+        "memory intervention. At 4,096 operations, the recall-length sweep gives "
+        "the following descriptive endpoint comparison; the model was trained at "
+        "only 64 operations.\n"
+        + recall
+        + "The train/test ratio probes show SCAR at " + ratio32
+        + " when trained at 32 operations and " + ratio128
+        + " when trained at 128 operations, so the 512-token result is not treated "
+        "as a universal context-length law. Associative recall is a useful negative "
+        "control: SCAR reaches " + assoc
+        + " at 32 key/value pairs against a 6.25\\% single-choice chance floor, "
+        "indicating that the fixed exponential summaries do not solve arbitrary "
+        "multi-item retrieval.\n\n"
+        "Selective copy makes the retrieval target multi-output rather than a "
+        "single first-token label. At 32 marked items, SCAR's free-running "
+        "exact-sequence accuracy is " + copy_high_text
+        + " under the high-entropy distractor condition and " + copy_low_text
+        + " under the low-entropy condition. The slot sweep's 512-operation "
+        "SCAR endpoints are " + (slot_text or "not available")
+        + ". Frozen-memory interventions at 512 operations are "
+        + intervention_text
+        + ". These are exploratory, descriptive comparisons; no significance "
+        "claim is made from the small seed counts.\n"
+        + s2_figure(
+            "recall_length_accuracy.png",
+            "Study 2A: delayed-recall accuracy through 4,096 operations after training at 64 operations. Shaded bands are bootstrap intervals over seed means.",
+            "fig:study2-recall",
+        )
+        + s2_figure(
+            "selective_copy_entropy16_exact_sequence.png",
+            "Study 2D: free-running exact-sequence accuracy for high-entropy selective copy.",
+            "fig:study2-copy",
+        )
+    )
 
 
 def main():
@@ -480,6 +642,9 @@ here.
 @@ABLATION_TEXT@@
 @@DENSITY_FIGURE@@
 
+\section{Study 2: stress tests and failure modes}
+@@STUDY2_SECTION@@
+
 \section{Compute cost}
 @@COST_TABLE@@
 @@COST_TEXT@@
@@ -600,6 +765,7 @@ report, 2026. \url{https://github.com/yifanzhang-pro/recurrent-looped-tranformer
         "@@SCAR_GRU_COST@@": cost_ratios["scar_gru"],
         "@@SCAR_RLT_COST@@": cost_ratios["scar_rlt"],
         "@@DISCUSSION_TEXT@@": discussion_text(summary),
+        "@@STUDY2_SECTION@@": study2_section(),
         "@@ACCURACY_FIGURE@@": figure_tex(
             "accuracy_by_config.png",
             "Accuracy versus evaluation length. Lines are seed means and shaded bands span the three-seed minimum and maximum.",

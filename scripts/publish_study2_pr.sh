@@ -32,6 +32,7 @@ fi
 
 command -v git >/dev/null || die "git is required"
 command -v python3 >/dev/null || die "python3 is required"
+command -v tectonic >/dev/null || die "tectonic is required to verify the paper"
 command -v github-safety >/dev/null || die "github-safety is required"
 command -v gh-safe >/dev/null || die "gh-safe is required"
 
@@ -68,6 +69,10 @@ done
 python3 -m pytest tests/ -q
 python3 -m study2.analyze "$DEST" --out analysis/study2
 python3 study2/state_memory.py --out analysis/study2/state_memory.json
+python3 make_paper.py
+(cd paper && tectonic paper.tex >/dev/null)
+[[ -z "$(git status --porcelain)" ]] \
+  || die "generated analysis or paper differs; commit the regenerated release before publishing"
 git diff --check "origin/$BASE_BRANCH...HEAD"
 
 # Refuse accidental local training. The normal benchmark guard exits before
