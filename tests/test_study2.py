@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from study2.validate import validate_artifact
-from study2.analyze import bootstrap_ci, family_name
+from study2.analyze import aggregate_interventions, bootstrap_ci, family_name
 from study2.state_memory import persistent_state_bytes
 from study2.selective_copy import BOS, MARK, SLOT, make_batch
 
@@ -125,6 +125,29 @@ def test_bootstrap_summary_is_deterministic_and_bounded():
     second = bootstrap_ci([100.0, 50.0, 0.0], np.random.default_rng(4), draws=1000)
     assert first == second
     assert 0.0 <= first[0] <= first[1] <= 100.0
+
+
+def test_analysis_preserves_intervention_metrics():
+    rows = [{
+        "_family": "intervention",
+        "model": "scar",
+        "seed": 0,
+        "interventions": {
+            "fastest": {"64": 80.0, "512": 40.0},
+            "shuffle": {"64": 70.0, "512": 30.0},
+        },
+    }, {
+        "_family": "intervention",
+        "model": "scar",
+        "seed": 1,
+        "interventions": {
+            "fastest": {"64": 90.0, "512": 50.0},
+            "shuffle": {"64": 60.0, "512": 20.0},
+        },
+    }]
+    summary = aggregate_interventions(rows)
+    assert summary["intervention"]["scar"]["fastest"]["512"]["mean"] == 45.0
+    assert summary["intervention"]["scar"]["shuffle"]["64"]["n_seeds"] == 2
 
 
 def test_analysis_keeps_mechanism_and_entropy_conditions_separate(tmp_path):

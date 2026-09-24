@@ -82,6 +82,29 @@ def aggregate(rows, metric_key="accuracy_pct"):
     return summary
 
 
+def aggregate_interventions(rows):
+    """Aggregate frozen-memory intervention accuracies separately from baseline."""
+    rng = np.random.default_rng(20260924)
+    grouped = defaultdict(list)
+    for row in rows:
+        for intervention, metrics in row.get("interventions", {}).items():
+            for context, value in metrics.items():
+                grouped[(row["_family"], row["model"], intervention, int(context))].append(
+                    (row["seed"], float(value))
+                )
+    summary = {}
+    for (family, model, intervention, context), pairs in sorted(grouped.items()):
+        pairs.sort()
+        summary.setdefault(family, {}).setdefault(model, {}).setdefault(
+            intervention, {}
+        )[str(context)] = summarize(
+            [value for _seed, value in pairs],
+            [seed for seed, _value in pairs],
+            rng,
+        )
+    return summary
+
+
 def plot_family(family, models, out, suffix="accuracy", ylabel="Accuracy (%)"):
     fig, ax = plt.subplots(figsize=(7.2, 4.6), constrained_layout=True)
     for model, points in sorted(models.items()):
@@ -118,6 +141,12 @@ def main():
         json.dump(summary, f, indent=2)
     for family, models in summary.items():
         plot_family(family, models, out)
+
+    intervention_rows = [row for row in rows if row.get("interventions")]
+    if intervention_rows:
+        intervention_summary = aggregate_interventions(intervention_rows)
+        with (out / "intervention_summary.json").open("w") as f:
+            json.dump(intervention_summary, f, indent=2)
 
     exact_rows = [
         row for row in rows
