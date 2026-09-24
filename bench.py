@@ -50,9 +50,9 @@ def make_batch(task, ops, bs, rng, auto):
         ans = seq[:, 0].copy()
         run = np.tile(ans[:, None], (1, ops))      # placeholder; recall is sparse-only
     elif task == "assoc":
-        # Key/value pairs use disjoint vocabularies. Token 16 is BOS and token
-        # 17 is a query marker; keys are 0..7 and values are 8..15. Each key
-        # occurs once in the pairs and is queried once at the end, so the
+        # Key/value pairs use disjoint vocabularies. Keys are 0..31, values
+        # are 32..47, token 49 is a query marker, and token 48 is BOS. Each
+        # key occurs once in the pairs and is queried once at the end, so the
         # answer cannot be recovered from a token-identity shortcut.
         key_count, value_count = 32, 16
         if ops < 1 or ops > key_count:
