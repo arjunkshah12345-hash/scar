@@ -542,10 +542,15 @@ related ways to extend context beyond a fixed window
 \cite{dai2019transformerxl,rae2020compressive}. Associative recall and its
 multi-query formulation provide a particularly relevant diagnostic for whether
 an efficient sequence model can retrieve several previously presented items
-\cite{arora2023zoology}. SCAR is intentionally small and synthetic: it is an
-ablation instrument for the state-carriage versus growing-memory question,
-not a claim to improve language modeling or to replace these broader model
-families.
+\cite{arora2023zoology}. Earlier work also showed that deliberately slow
+recurrent units can learn longer memory \cite{mikolov2015longmemory}.
+Linear-attention formulations expose a recurrent constant-state computation
+\cite{katharopoulos2020linear}; RetNet makes a related parallel/recurrent
+retention trade-off \cite{sun2023retnet}; and Mamba uses input-dependent
+selective state-space updates for content-based retention \cite{gu2024mamba}.
+SCAR is intentionally small and synthetic: it is an ablation instrument for
+the state-carriage versus growing-memory question, not a claim to improve
+language modeling or to replace these broader model families.
 
 The RLT baseline here is a faithful small-scale implementation of the
 publicly described recurrent-looped pattern: a causal encoder, a recurrent
@@ -726,6 +731,23 @@ arXiv:1503.08895.
 A. Gu, K. Goel, and C. Ré, ``Efficiently modeling long sequences with
 structured state spaces,'' in \emph{International Conference on Learning
 Representations}, 2022. arXiv:2111.00396.
+
+\bibitem{mikolov2015longmemory}
+T. Mikolov, A. Joulin, S. Chopra, M. Mathieu, and M. Ranzato,
+``Learning longer memory in recurrent neural networks,'' arXiv:1412.7753, 2015.
+
+\bibitem{katharopoulos2020linear}
+A. Katharopoulos, A. Vyas, N. Pappas, and F. Fleuret,
+``Transformers are RNNs: Fast autoregressive transformers with linear attention,''
+in \emph{International Conference on Machine Learning}, 2020. arXiv:2006.16236.
+
+\bibitem{sun2023retnet}
+Y. Sun et al., ``Retentive network: A successor to Transformer for large
+language models,'' arXiv:2307.08621, 2023.
+
+\bibitem{gu2024mamba}
+A. Gu and T. Dao, ``Mamba: Linear-time sequence modeling with selective state
+spaces,'' arXiv:2312.00752, 2023.
 
 \bibitem{dai2019transformerxl}
 Z. Dai, Z. Yang, Y. Yang, J. Carbonell, Q. V. Le, and R. Salakhutdinov,
