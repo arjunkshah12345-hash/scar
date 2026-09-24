@@ -57,7 +57,10 @@ def validate_artifact(row: dict, path: Path | None = None, expected_study="study
 
 def validate_directory(directory: str | Path, expected_count: int | None = None) -> list[Path]:
     root = Path(directory)
-    paths = sorted(root.glob("*.json"))
+    # Drivers keep a provenance manifest beside the per-run artifacts. The
+    # manifest is intentionally not an artifact row and must not count toward
+    # the expected run total.
+    paths = sorted(p for p in root.glob("*.json") if p.name != "manifest.json")
     if expected_count is not None and len(paths) != expected_count:
         raise ValueError(f"{root}: found {len(paths)} JSON files, expected {expected_count}")
     seen = set()
