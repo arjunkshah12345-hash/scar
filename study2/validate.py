@@ -74,6 +74,14 @@ def validate_directory(directory: str | Path, expected_count: int | None = None)
         with path.open() as f:
             row = json.load(f)
         validate_artifact(row, path)
+        if root.name == "intervention":
+            interventions = row.get("interventions")
+            expected_interventions = {"fastest", "slowest", "equalize", "shuffle", "noise"}
+            if not isinstance(interventions, dict) or set(interventions) != expected_interventions:
+                raise ValueError(
+                    f"{path}: intervention artifact must contain exactly "
+                    f"{sorted(expected_interventions)}"
+                )
         if expected_commit is not None and row["git_commit"] != expected_commit:
             raise ValueError(
                 f"{path}: git_commit {row['git_commit']!r} does not match "

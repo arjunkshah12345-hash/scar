@@ -150,6 +150,45 @@ def test_analysis_preserves_intervention_metrics():
     assert summary["intervention"]["scar"]["shuffle"]["64"]["n_seeds"] == 2
 
 
+def test_intervention_validator_requires_all_frozen_perturbations(tmp_path):
+    import json
+
+    row = {
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_id": "v3E_intervention_scar_seed0", "git_commit": "abc",
+        "model": "scar", "variant": "scar", "seed": 0, "task": "recall",
+        "task_parameters": {}, "train_context": 64, "eval_contexts": [64],
+        "eval_examples": 4, "params": 100, "optimizer": {"name": "AdamW"},
+        "lr": 0.003, "weight_decay": 0.01, "warmup_steps": 200,
+        "batch_size": 64, "steps": 10, "training_examples": 640,
+        "training_tokens": 40960, "supervision": "recall_sparse",
+        "curriculum": False, "metrics": {"accuracy_pct": {"64": 50.0}},
+        "interventions": {name: {"64": 50.0} for name in
+                           ("fastest", "slowest", "equalize", "shuffle", "noise")},
+        "raw_metrics": {}, "train_seconds": 1.0, "train_ms_per_step": 1.0,
+        "inference_ms_per_example": {"64": 1.0},
+        "env": {
+            "torch": "x", "numpy": "x", "python": "x", "platform": "x",
+            "device": "cpu", "cpu": "x", "gpu": None, "torch_threads": 2,
+            "git_commit": "abc", "timestamp_utc": "x",
+        },
+    }
+    path = tmp_path / "intervention"
+    path.mkdir()
+    (path / "v3E_intervention_scar_seed0.json").write_text(json.dumps(row))
+    from study2.validate import validate_directory
+
+    assert len(validate_directory(path, expected_count=1)) == 1
+    row["interventions"].pop("noise")
+    (path / "v3E_intervention_scar_seed0.json").write_text(json.dumps(row))
+    try:
+        validate_directory(path, expected_count=1)
+    except ValueError as exc:
+        assert "intervention artifact" in str(exc)
+    else:
+        raise AssertionError("incomplete intervention artifact was accepted")
+
+
 def test_analysis_keeps_mechanism_and_entropy_conditions_separate(tmp_path):
     selective = {
         "task": "selective_copy",
