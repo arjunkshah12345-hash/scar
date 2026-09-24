@@ -29,10 +29,16 @@ def result_tag(config, model, seed):
     suffix = "_curriculum" if curriculum else ""
     return f"{model}_{task}_{density}{suffix}_seed{seed}"
 
+
+def output_dir(config):
+    return "results_curriculum" if CONFIGS[config][2] else "results"
+
+
 def run(job):
     config, (task, density, curriculum), model, seed = job
     tag = result_tag(config, model, seed)
-    out = os.path.join("results", f"{tag}.json")
+    out_dir = output_dir(config)
+    out = os.path.join(out_dir, f"{tag}.json")
     if os.path.exists(out):
         print(f"skip {out}", flush=True)
         return
@@ -40,7 +46,7 @@ def run(job):
     t0 = time.time()
     cmd = [sys.executable, "bench.py", "--model", model, "--task", task,
            "--density", density, "--seed", str(seed), "--steps", str(STEPS),
-           "--device", "cpu", "--out", "results"]
+           "--device", "cpu", "--out", out_dir]
     if curriculum:
         cmd.append("--curriculum")
     rc = subprocess.run(
@@ -65,7 +71,8 @@ def main():
     if unknown:
         raise SystemExit(f"unknown config(s): {', '.join(unknown)}; choose from {', '.join(CONFIGS)}")
     os.makedirs("logs", exist_ok=True)
-    os.makedirs("results", exist_ok=True)
+    for out_dir in {output_dir(config) for config in selected}:
+        os.makedirs(out_dir, exist_ok=True)
     jobs = [(c, CONFIGS[c], m, s) for c in selected for m in MODELS for s in SEEDS]
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         list(ex.map(run, jobs))

@@ -23,6 +23,8 @@ def test_sweep_has_exactly_five_release_configs():
     assert set(run_all.CONFIGS) == set(RELEASE_CONFIGS) | {"parity_sparse_curriculum"}
     assert run_all.result_tag("parity_sparse", "scar", 0) == "scar_parity_sparse_seed0"
     assert run_all.result_tag("parity_sparse_curriculum", "scar", 0) == "scar_parity_sparse_curriculum_seed0"
+    assert run_all.output_dir("parity_sparse") == "results"
+    assert run_all.output_dir("parity_sparse_curriculum") == "results_curriculum"
 
 
 def test_checked_in_results_are_complete_and_match_protocol():
