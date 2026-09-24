@@ -4,6 +4,7 @@ from pathlib import Path
 from study2.validate import validate_artifact
 from study2.analyze import bootstrap_ci
 from study2.state_memory import persistent_state_bytes
+from study2.selective_copy import MARK, SLOT, make_batch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,3 +94,35 @@ def test_persistent_state_scaling_matches_architecture_claim():
     assert persistent_state_bytes("gru", 64) == persistent_state_bytes("gru", 4096)
     assert persistent_state_bytes("transformer", 4096) > persistent_state_bytes("transformer", 64)
     assert persistent_state_bytes("rlt", 4096) > persistent_state_bytes("rlt", 64)
+
+
+def test_selective_copy_batch_marks_ordered_targets_and_slots():
+    import numpy as np
+
+    seq, targets, slots = make_batch(
+        total_items=12,
+        marked_items=4,
+        batch_size=5,
+        rng=np.random.default_rng(7),
+    )
+    assert seq.shape == (5, 12 * 2 + 1 + 2 * 4)
+    assert targets.shape == (5, 4)
+    assert slots.tolist() == [26, 28, 30, 32]
+    for row, expected in zip(seq, targets):
+        marked_positions = (row[:24:2] == MARK).nonzero().flatten()
+        assert len(marked_positions) == 4
+        assert row[24] != MARK
+        assert row[slots - 1].tolist() == [SLOT] * 4
+        assert row[2 * marked_positions + 1].tolist() == expected.tolist()
+
+
+def test_selective_copy_kernel_is_cloud_only_and_multi_output():
+    metadata = ROOT / "kaggle" / "selective-copy" / "kernel-metadata.json"
+    driver = ROOT / "kaggle" / "selective-copy" / "scar_train.py"
+    assert metadata.exists() and driver.exists()
+    source = driver.read_text()
+    assert "v3D_copy_items64" in source
+    assert "study2.selective_copy" in source
+    module = (ROOT / "study2" / "selective_copy.py").read_text()
+    assert "free_running_exact_sequence_pct" in module
+    assert "Refusing local training" in module
