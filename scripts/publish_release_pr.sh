@@ -32,7 +32,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner')"
-git fetch origin "$BASE_BRANCH" "$RELEASE_BRANCH" --quiet
+git fetch origin "$BASE_BRANCH" --quiet
 
 if ! git rev-parse --verify "origin/$BASE_BRANCH" >/dev/null 2>&1; then
   echo "Missing origin/$BASE_BRANCH" >&2
