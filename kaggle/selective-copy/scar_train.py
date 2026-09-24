@@ -43,6 +43,7 @@ manifest = {
     "eval_marked": [int(x) for x in EVAL_MARKED.split(",")],
     "eval_examples": 4096,
     "distractor_conditions": {name: vocab for name, vocab in CONDITIONS},
+    "expected_count": EXPECTED,
 }
 (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

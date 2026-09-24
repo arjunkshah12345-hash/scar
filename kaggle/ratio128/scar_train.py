@@ -27,6 +27,7 @@ logs.mkdir(parents=True, exist_ok=True)
     "experiment_family": "v3B_recall_train128", "git_commit": commit,
     "models": MODELS, "seeds": list(SEEDS), "train_ops": 128,
     "eval_lengths": [int(x) for x in EVAL_LENGTHS.split(",")],
+    "expected_count": EXPECTED,
 }, indent=2))
 
 for model in MODELS:

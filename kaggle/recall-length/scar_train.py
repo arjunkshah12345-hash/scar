@@ -38,6 +38,7 @@ manifest = {
     "train_ops": 64,
     "eval_lengths": [int(x) for x in EVAL_LENGTHS.split(",")],
     "eval_examples": 4096,
+    "expected_count": EXPECTED,
 }
 (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

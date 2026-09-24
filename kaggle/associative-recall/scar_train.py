@@ -38,6 +38,7 @@ manifest = {
     "train_pairs": 4,
     "eval_pairs": [int(x) for x in EVAL_PAIRS.split(",")],
     "eval_examples": 4096,
+    "expected_count": len(MODELS) * len(list(SEEDS)),
 }
 (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2))
 

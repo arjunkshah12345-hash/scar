@@ -24,6 +24,7 @@ logs.mkdir(parents=True, exist_ok=True)
     "study": "study2", "protocol_version": "v3.0",
     "experiment_family": "v3E_intervention", "git_commit": commit,
     "seeds": list(SEEDS), "eval_lengths": [int(x) for x in EVAL_LENGTHS.split(",")],
+    "models": ["scar"], "expected_count": len(list(SEEDS)),
 }, indent=2))
 
 for seed in SEEDS:
