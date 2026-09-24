@@ -57,5 +57,18 @@ for directory, count in ((root / "slot_sweep", 21), (root / "decay_sweep", 12)):
         "seeds": list(SEEDS),
     }, indent=2))
     shutil.copytree(directory, f"/kaggle/working/study2-results/{directory.name}", dirs_exist_ok=True)
+
+# Expose one family-level manifest for the collector. The two sweep manifests
+# remain beside their artifacts, while this copy makes the combined 33-run
+# provenance discoverable at study2_results/mechanism/manifest.json.
+family_manifest = root / "mechanism" / "manifest.json"
+family_manifest.parent.mkdir(parents=True, exist_ok=True)
+family_manifest.write_text(json.dumps({
+    "study": "study2", "protocol_version": "v3.0",
+    "experiment_family": "v3E_mechanism", "git_commit": commit,
+    "eval_lengths": [int(x) for x in EVAL_LENGTHS.split(",")],
+    "seeds": list(SEEDS), "expected_count": 33,
+    "subfamilies": {"slot_sweep": 21, "decay_sweep": 12},
+}, indent=2))
 shutil.copytree(logs, "/kaggle/working/study2-logs/mechanism", dirs_exist_ok=True)
 print(f"Study 2E complete: {expected} artifacts")

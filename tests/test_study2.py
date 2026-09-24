@@ -48,6 +48,8 @@ def test_mechanism_kernel_covers_slots_and_decay_modes():
     driver = (ROOT / "kaggle" / "mechanism" / "scar_train.py").read_text()
     assert "--scar_k" in driver and "--scar_decay_mode" in driver
     assert "slot_sweep" in driver and "decay_sweep" in driver
+    assert 'experiment_family": "v3E_mechanism"' in driver
+    assert 'root / "mechanism" / "manifest.json"' in driver
     assert "study2.validate" in driver
 
 
