@@ -375,7 +375,12 @@ self-attention and expose all earlier positions during a causal forward pass
 \cite{vaswani2017}. External-memory networks add a separately addressable
 storage and read mechanism \cite{sukhbaatar2015}; structured state-space
 models offer another route to long-range sequence processing with fixed-size
-state \cite{gu2022s4}. SCAR is intentionally small and synthetic: it is an
+state \cite{gu2022s4}. Segment-level recurrence and compressed memories offer
+related ways to extend context beyond a fixed window
+\cite{dai2019transformerxl,rae2020compressive}. Associative recall and its
+multi-query formulation provide a particularly relevant diagnostic for whether
+an efficient sequence model can retrieve several previously presented items
+\cite{arora2023zoology}. SCAR is intentionally small and synthetic: it is an
 ablation instrument for the state-carriage versus growing-memory question,
 not a claim to improve language modeling or to replace these broader model
 families.
@@ -529,7 +534,7 @@ python3 make_paper.py
 The generated summary includes per-seed values and the curriculum flag so the
 reported condition cannot silently drift from the trained artifacts.
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{12}
 \bibitem{elman1990}
 J. L. Elman, ``Finding structure in time,'' \emph{Cognitive Science},
 14(2), 179--211, 1990. doi:10.1207/s15516709cog1402\_1.
@@ -556,6 +561,22 @@ arXiv:1503.08895.
 A. Gu, K. Goel, and C. Ré, ``Efficiently modeling long sequences with
 structured state spaces,'' in \emph{International Conference on Learning
 Representations}, 2022. arXiv:2111.00396.
+
+\bibitem{dai2019transformerxl}
+Z. Dai, Z. Yang, Y. Yang, J. Carbonell, Q. V. Le, and R. Salakhutdinov,
+``Transformer-XL: Attentive language models beyond a fixed-length context,''
+\emph{Proceedings of ACL}, 2019. arXiv:1901.02860.
+
+\bibitem{rae2020compressive}
+J. W. Rae, A. Potapenko, S. M. Jayakumar, and T. P. Lillicrap,
+``Compressive transformers for long-range sequence modelling,'' in
+\emph{International Conference on Learning Representations}, 2020.
+arXiv:1911.05507.
+
+\bibitem{arora2023zoology}
+S. Arora, S. Eyuboglu, A. Timalsina, I. Johnson, M. Poli, J. Zou,
+A. Rudra, and C. Ré, ``Zoology: Measuring and improving recall in efficient
+language models,'' arXiv:2312.04927, 2023.
 
 \bibitem{zhang2026rlt}
 Y. Zhang, J. Feng, and S. Qin, ``Recurrent Looped Transformer,'' technical
