@@ -41,6 +41,12 @@ collect_one() {
   find "$tmp" -type f -name 'v3*.json' -exec cp {} "$dest"/ \;
   local manifest
   manifest="$(find "$tmp" -type f -path "*/study2_results/$family/manifest.json" | head -n 1)"
+  if [[ -z "$manifest" && "$family" == "mechanism" ]]; then
+    manifest="$(find "$tmp" -type f \( \
+      -path "*/study2_results/slot_sweep/manifest.json" -o \
+      -path "*/study2_results/decay_sweep/manifest.json" \
+    \) | head -n 1)"
+  fi
   if [[ -n "$manifest" ]]; then cp "$manifest" "$dest/manifest.json"; fi
   count="$(find "$dest" -maxdepth 1 -type f -name 'v3*.json' | wc -l | tr -d ' ')"
   echo "$family: $count/$expected artifacts"
