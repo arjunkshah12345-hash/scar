@@ -325,9 +325,9 @@ class SCAR(nn.Module):
     use_recall=False -> memory is written but never read (ablation).
     """
     def __init__(self, vocab, d=88, k=16, r=40, lam_min=0.90, lam_max=0.999,
-                 use_memory=True, use_recall=True, **kw):
+                 use_memory=True, use_recall=True, decay_mode="learned_multi", **kw):
         super().__init__()
-        self.d, self.k, self.r = d, k, r
+        self.d, self.k, self.r, self.decay_mode = d, k, r, decay_mode
         self.use_memory, self.use_recall = use_memory, use_recall
         self.emb = nn.Embedding(vocab, d)
         self.cell = nn.GRUCell(d, d)
@@ -339,7 +339,16 @@ class SCAR(nn.Module):
             # the desired linspace(lam_min, lam_max). The previous version stored
             # log(lam) here and sigmoid'ed it, which collapsed every slot to ~0.5
             # and destroyed the multi-timescale structure.
-            self.log_lam = nn.Parameter(logit_init(k, lam_min, lam_max))
+            if decay_mode == "learned_multi":
+                self.log_lam = nn.Parameter(logit_init(k, lam_min, lam_max))
+            elif decay_mode == "learned_single":
+                self.log_lam = nn.Parameter(logit_init(1, 0.99, 0.99))
+            elif decay_mode == "fixed_multi":
+                self.register_buffer("fixed_lam", torch.linspace(lam_min, lam_max, k))
+            elif decay_mode == "fixed_single":
+                self.register_buffer("fixed_lam", torch.full((k,), 0.99))
+            else:
+                raise ValueError(f"unknown decay_mode={decay_mode}")
         # attentive recall over the k slots
         if use_recall:
             self.ln_r = nn.LayerNorm(d)
@@ -353,7 +362,13 @@ class SCAR(nn.Module):
     def decay(self):
         """Current per-slot decay rates in (0, 1); slot i decays towards lam_max
         (slowest timescale). Exposed for tests and analysis."""
-        return torch.sigmoid(self.log_lam) if self.use_memory else None
+        if not self.use_memory:
+            return None
+        if self.decay_mode == "learned_multi":
+            return torch.sigmoid(self.log_lam)
+        if self.decay_mode == "learned_single":
+            return torch.sigmoid(self.log_lam).expand(self.k)
+        return self.fixed_lam
 
     def forward(self, x, targets=None):
         B, T = x.shape
@@ -455,6 +470,10 @@ def main():
     ap.add_argument("--protocol_version", default="study1")
     ap.add_argument("--experiment_id", default=None,
                     help="stable artifact ID; when supplied, output uses <experiment_id>.json")
+    ap.add_argument("--scar_k", type=int, default=16,
+                    help="SCAR memory slots for SCAR variants")
+    ap.add_argument("--scar_decay_mode", choices=["learned_multi", "learned_single", "fixed_multi", "fixed_single"],
+                    default="learned_multi")
     args = ap.parse_args()
     if args.train_ops is None:
         args.train_ops = DEFAULT_TRAIN_OPS[args.task]
@@ -464,6 +483,8 @@ def main():
         raise SystemExit(f"{args.task} task is defined sparse-only (one answer after the delay)")
     if args.eval_examples <= 0 or args.eval_batch <= 0:
         raise SystemExit("eval_examples and eval_batch must be positive")
+    if args.scar_k <= 0:
+        raise SystemExit("scar_k must be positive")
     if args.eval_lengths:
         try:
             eval_lengths = tuple(sorted({int(x) for x in args.eval_lengths.split(",") if x.strip()}))
@@ -489,13 +510,13 @@ def main():
         "transformer": {"d": 56, "L": 3, "h": 4, "ffn": 112},
         "token_merge": {"d": 56, "L": 3, "h": 4, "ffn": 112, "window": 8},
         "rlt": {"d": 40, "LE": 2, "LD": 2, "h": 4, "ffn": 80, "window": 8},
-        "scar": {"d": 88, "k": 16, "r": 40},
+        "scar": {"d": 88, "k": args.scar_k, "r": 40, "decay_mode": args.scar_decay_mode},
         # ablations: scar_carrier drops memory entirely and widens the carrier
         # (d 88 -> 112) to recover the parameter budget; scar_norecall keeps the
         # full write path but never reads memory, widening d 88 -> 98 for the
         # same reason. Both land within ~1% of scar's parameter count.
-        "scar_carrier": {"d": 112, "k": 16, "r": 40, "use_memory": False, "use_recall": False},
-        "scar_norecall": {"d": 98, "k": 16, "r": 40, "use_memory": True, "use_recall": False},
+        "scar_carrier": {"d": 112, "k": args.scar_k, "r": 40, "use_memory": False, "use_recall": False},
+        "scar_norecall": {"d": 98, "k": args.scar_k, "r": 40, "use_memory": True, "use_recall": False},
     }
     auto = gen_automaton(rng) if args.task == "five" else None
     model = MODELS[args.model](vocab, cfg)
@@ -576,6 +597,8 @@ def main():
             "density": args.density,
             "train_ops": args.train_ops,
             "curriculum": bool(args.curriculum),
+            "scar_k": args.scar_k,
+            "scar_decay_mode": args.scar_decay_mode,
         },
         "params": nparams, "steps": args.steps, "batch": args.batch,
         "batch_size": args.batch,

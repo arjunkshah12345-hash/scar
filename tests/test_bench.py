@@ -50,6 +50,18 @@ def test_decay_init_does_not_collapse():
     assert (lam.max() - lam.min()) > 0.08, "decays collapsed -- multi-timescale destroyed"
 
 
+def test_decay_modes_are_explicit_and_shape_stable():
+    for mode in ("learned_multi", "learned_single", "fixed_multi", "fixed_single"):
+        m = SCAR(vocab=5, k=8, decay_mode=mode)
+        lam = m.decay()
+        assert lam.shape == (8,)
+        assert torch.all((lam > 0.0) & (lam < 1.0))
+    assert torch.allclose(
+        SCAR(vocab=5, k=8, decay_mode="learned_single").decay(),
+        SCAR(vocab=5, k=8, decay_mode="learned_single").decay()[0].expand(8),
+    )
+
+
 # ---------- 2. train/eval BOS consistency ----------
 
 class ProtocolParityModel(torch.nn.Module):

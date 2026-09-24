@@ -42,6 +42,13 @@ def test_ratio_kernels_have_distinct_experiment_families():
         assert f"v3B_recall_{train_ops}" in driver
 
 
+def test_mechanism_kernel_covers_slots_and_decay_modes():
+    driver = (ROOT / "kaggle" / "mechanism" / "scar_train.py").read_text()
+    assert "--scar_k" in driver and "--scar_decay_mode" in driver
+    assert "slot_sweep" in driver and "decay_sweep" in driver
+    assert "study2.validate" in driver
+
+
 def test_study2_validator_accepts_complete_shape():
     row = {
         "study": "study2", "protocol_version": "v3.0",
