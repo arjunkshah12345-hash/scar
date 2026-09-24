@@ -51,12 +51,13 @@ def load(root):
     return rows
 
 
-def aggregate(rows):
+def aggregate(rows, metric_key="accuracy_pct"):
     rng = np.random.default_rng(20260924)
     grouped = defaultdict(list)
     for row in rows:
         family = row["_family"]
-        for context, value in row["metrics"]["accuracy_pct"].items():
+        metrics = row["metrics"] if metric_key == "accuracy_pct" else row["raw_metrics"]
+        for context, value in metrics[metric_key].items():
             grouped[(family, row["model"], int(context))].append(
                 (row["seed"], float(value))
             )
@@ -69,7 +70,7 @@ def aggregate(rows):
     return summary
 
 
-def plot_family(family, models, out):
+def plot_family(family, models, out, suffix="accuracy", ylabel="Accuracy (%)"):
     fig, ax = plt.subplots(figsize=(7.2, 4.6), constrained_layout=True)
     for model, points in sorted(models.items()):
         x = np.array([int(k) for k in points])
@@ -81,12 +82,12 @@ def plot_family(family, models, out):
         ax.plot(x, y, marker="o", linewidth=1.8, label=model)
         ax.fill_between(x, lo, hi, alpha=0.12)
     ax.set_xlabel("Evaluation units (operations or associative pairs)")
-    ax.set_ylabel("Accuracy (%)")
-    ax.set_title(f"Study 2: {family.replace('_', ' ')}")
+    ax.set_ylabel(ylabel)
+    ax.set_title(f"Study 2: {family.replace('_', ' ')} ({suffix.replace('_', ' ')})")
     ax.set_ylim(0, 100)
     ax.grid(alpha=0.25)
     ax.legend(ncol=2, fontsize=8, frameon=False)
-    fig.savefig(out / f"{family}_accuracy.png", dpi=180)
+    fig.savefig(out / f"{family}_{suffix}.png", dpi=180)
     plt.close(fig)
 
 
@@ -105,6 +106,23 @@ def main():
         json.dump(summary, f, indent=2)
     for family, models in summary.items():
         plot_family(family, models, out)
+
+    exact_rows = [
+        row for row in rows
+        if "free_running_exact_sequence_pct" in row.get("raw_metrics", {})
+    ]
+    if exact_rows:
+        exact_summary = aggregate(exact_rows, "free_running_exact_sequence_pct")
+        with (out / "exact_sequence_summary.json").open("w") as f:
+            json.dump(exact_summary, f, indent=2)
+        for family, models in exact_summary.items():
+            plot_family(
+                family,
+                models,
+                out,
+                suffix="exact_sequence",
+                ylabel="Exact-sequence accuracy (%)",
+            )
     print(f"analyzed {len(rows)} Study 2 artifacts across {len(summary)} families")
 
 
