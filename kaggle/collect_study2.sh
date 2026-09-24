@@ -30,9 +30,15 @@ collect_one() {
   local tmp="/tmp/scar-v3-output-${family}"
   local dest="$DEST/$family"
   mkdir -p "$tmp" "$dest"
+  local count
+  count="$(find "$dest" -maxdepth 1 -type f -name 'v3*.json' | wc -l | tr -d ' ')"
+  if [[ "$count" == "$expected" ]]; then
+    python3 -m study2.validate "$dest" --expected-count "$expected"
+    echo "$family: $count/$expected artifacts already collected"
+    return 0
+  fi
   kaggle kernels output "aks1321/$kernel" -p "$tmp" --force >/dev/null 2>&1 || true
   find "$tmp" -type f -name 'v3*.json' -exec cp {} "$dest"/ \;
-  local count
   count="$(find "$dest" -maxdepth 1 -type f -name 'v3*.json' | wc -l | tr -d ' ')"
   echo "$family: $count/$expected artifacts"
   if [[ "$count" == "$expected" ]]; then
