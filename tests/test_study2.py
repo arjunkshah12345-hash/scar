@@ -4,7 +4,7 @@ from pathlib import Path
 from study2.validate import validate_artifact
 from study2.analyze import bootstrap_ci
 from study2.state_memory import persistent_state_bytes
-from study2.selective_copy import MARK, SLOT, make_batch
+from study2.selective_copy import BOS, MARK, SLOT, make_batch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -136,6 +136,7 @@ def test_selective_copy_batch_marks_ordered_targets_and_slots():
     assert seq.shape == (5, 12 * 2 + 1 + 2 * 4)
     assert targets.shape == (5, 4)
     assert slots.tolist() == [26, 28, 30, 32]
+    assert BOS != SLOT
     for row, expected in zip(seq, targets):
         marked_positions = (row[:24:2] == MARK).nonzero().flatten()
         assert len(marked_positions) == 4
