@@ -1,0 +1,25 @@
+{
+  "study": "study2",
+  "protocol_version": "v3.0",
+  "experiment_family": "v3E_mechanism",
+  "git_commit": "aa8cde3f841e29cbe0614d6c1d7bd738b28c52a2",
+  "models": [
+    "scar"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "eval_lengths": [
+    64,
+    512,
+    2048
+  ],
+  "expected_count": 33,
+  "subfamilies": {
+    "slot_sweep": 21,
+    "decay_sweep": 12
+  },
+  "source": "Derived from the 33 committed per-run artifacts and the Kaggle mechanism driver contract; no metrics were changed."
+}

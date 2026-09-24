@@ -137,7 +137,7 @@ def validate_directory(directory: str | Path, expected_count: int | None = None)
     if expected_seeds is not None:
         expected_seeds = sorted(expected_seeds)
         for model in sorted({row["model"] for row in rows}):
-            actual_seeds = sorted(row["seed"] for row in rows if row["model"] == model)
+            actual_seeds = sorted({row["seed"] for row in rows if row["model"] == model})
             if actual_seeds != expected_seeds:
                 raise ValueError(
                     f"{root}: seed set for {model} {actual_seeds} does not match "
