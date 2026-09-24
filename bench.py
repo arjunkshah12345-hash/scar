@@ -370,12 +370,15 @@ class SCAR(nn.Module):
             return torch.sigmoid(self.log_lam).expand(self.k)
         return self.fixed_lam
 
-    def forward(self, x, targets=None):
+    def forward(self, x, targets=None, intervention=None):
         B, T = x.shape
         h = torch.zeros(B, self.d, device=x.device)
         mem = (torch.zeros(B, self.k, self.d, device=x.device)
                if self.use_memory else None)
-        lam = self.decay().view(1, self.k, 1) if self.use_memory else None
+        lam_values = self.decay() if self.use_memory else None
+        if self.use_memory and intervention and intervention.get("equalize_decay"):
+            lam_values = lam_values.mean().expand(self.k)
+        lam = lam_values.view(1, self.k, 1) if self.use_memory else None
         outs = []
         for t in range(T):
             e = self.emb(x[:, t])
@@ -383,6 +386,18 @@ class SCAR(nn.Module):
             if self.use_memory:
                 u = torch.sigmoid(self.gw(torch.cat([e, h], dim=-1))) * h
                 mem = lam * mem + (1 - lam) * u.unsqueeze(1)      # multi-timescale EMA
+                if intervention:
+                    width = max(1, self.k // 4)
+                    if intervention.get("mask_fastest"):
+                        mem = mem.clone()
+                        mem[:, :width] = 0.0
+                    if intervention.get("mask_slowest"):
+                        mem = mem.clone()
+                        mem[:, -width:] = 0.0
+                    if intervention.get("shuffle_slots"):
+                        mem = mem.flip(1)
+                    if intervention.get("noise_std", 0.0):
+                        mem = mem + torch.randn_like(mem) * float(intervention["noise_std"])
                 read = h
                 if self.use_recall:
                     q = self.wq(self.ln_r(h)).view(B, 1, self.r)
@@ -420,7 +435,7 @@ def logit_init(k, lam_min=0.90, lam_max=0.999):
 def count_params(m):
     return sum(p.numel() for p in m.parameters())
 
-def evaluate(model, eval_sets, device, bos, eval_batch=256):
+def evaluate(model, eval_sets, device, bos, eval_batch=256, forward_kwargs=None):
     model.eval()
     accs, times = {}, {}
     with torch.no_grad():
@@ -431,7 +446,7 @@ def evaluate(model, eval_sets, device, bos, eval_batch=256):
             t0 = time.perf_counter()
             for i in range(0, n, eval_batch):
                 xb, ab = seqs[i:i + eval_batch], anss[i:i + eval_batch]
-                pred = model(add_bos(xb, bos))[:, -1].argmax(-1)
+                pred = model(add_bos(xb, bos), **(forward_kwargs or {}))[:, -1].argmax(-1)
                 correct += (pred == ab).sum().item()
             accs[ops] = 100.0 * correct / n
             times[ops] = (time.perf_counter() - t0) / n * 1e3
@@ -474,6 +489,8 @@ def main():
                     help="SCAR memory slots for SCAR variants")
     ap.add_argument("--scar_decay_mode", choices=["learned_multi", "learned_single", "fixed_multi", "fixed_single"],
                     default="learned_multi")
+    ap.add_argument("--interventions", default="",
+                    help="comma-separated frozen-SCAR interventions: fastest,slowest,equalize,shuffle,noise")
     args = ap.parse_args()
     if args.train_ops is None:
         args.train_ops = DEFAULT_TRAIN_OPS[args.task]
@@ -577,6 +594,22 @@ def main():
             print(f"  step {step} loss {np.mean(losses[-50:]):.4f}", flush=True)
 
     accs, eval_times = evaluate(model, eval_sets, device, BOS, eval_batch=args.eval_batch)
+    intervention_accs = {}
+    if args.interventions and args.model == "scar":
+        intervention_map = {
+            "fastest": {"mask_fastest": True},
+            "slowest": {"mask_slowest": True},
+            "equalize": {"equalize_decay": True},
+            "shuffle": {"shuffle_slots": True},
+            "noise": {"noise_std": 0.10},
+        }
+        for name in [x.strip() for x in args.interventions.split(",") if x.strip()]:
+            if name not in intervention_map:
+                raise SystemExit(f"unknown intervention={name}")
+            intervention_accs[name], _ = evaluate(
+                model, eval_sets, device, BOS, eval_batch=args.eval_batch,
+                forward_kwargs={"intervention": intervention_map[name]},
+            )
     def git_commit():
         try:
             return subprocess.check_output(
@@ -616,6 +649,7 @@ def main():
         "bos_token": BOS,
         "supervision": f"{args.task}_{args.density}",
         "acc": accs, "metrics": {"accuracy_pct": accs},
+        "interventions": intervention_accs,
         "eval_ms_per_program": eval_times,
         "inference_ms_per_example": eval_times,
         "train_ms_per_step": float(np.mean(step_ms[-500:])),

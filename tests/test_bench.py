@@ -62,6 +62,18 @@ def test_decay_modes_are_explicit_and_shape_stable():
     )
 
 
+def test_scar_interventions_preserve_output_shape():
+    torch.manual_seed(0)
+    m = SCAR(vocab=5, k=8)
+    x = torch.randint(0, 5, (2, 12))
+    for intervention in (
+        {"mask_fastest": True}, {"mask_slowest": True},
+        {"equalize_decay": True}, {"shuffle_slots": True},
+        {"noise_std": 0.1},
+    ):
+        assert m(x, intervention=intervention).shape == (2, 12, 5)
+
+
 # ---------- 2. train/eval BOS consistency ----------
 
 class ProtocolParityModel(torch.nn.Module):

@@ -49,6 +49,13 @@ def test_mechanism_kernel_covers_slots_and_decay_modes():
     assert "study2.validate" in driver
 
 
+def test_intervention_kernel_requests_frozen_memory_perturbations():
+    driver = (ROOT / "kaggle" / "intervention" / "scar_train.py").read_text()
+    assert "--interventions" in driver
+    for name in ("fastest", "slowest", "equalize", "shuffle", "noise"):
+        assert name in driver
+
+
 def test_study2_validator_accepts_complete_shape():
     row = {
         "study": "study2", "protocol_version": "v3.0",
