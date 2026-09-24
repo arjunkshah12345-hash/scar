@@ -88,6 +88,17 @@ python3 -m study2.analyze study2_results --out analysis/study2
 Incomplete or failed kernel outputs must not be included in paper tables. The
 paper is regenerated only after the complete artifact families pass validation.
 
+When the complete Study 2 release is committed on `research/v3`, the
+publication helper performs the final non-training checks, pushes the branch,
+and queues the PR to `main`:
+
+```
+./scripts/publish_study2_pr.sh
+```
+
+Set `RUN_GITHUB_WORKER=1` if the safety worker should submit the queued PR in
+the same invocation.
+
 ## Results
 `results/` holds the v2 run JSONs; `data/summary.json` the aggregation;
 `charts/` the figures; `site/` the generated result site; `paper/` the paper
