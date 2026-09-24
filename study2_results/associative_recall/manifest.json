@@ -1,0 +1,30 @@
+{
+  "study": "study2",
+  "protocol_version": "v3.0",
+  "experiment_family": "v3C_associative_recall",
+  "git_commit": "ee3b6b34a9271c74ac8dcda4f4c3517ed53833a3",
+  "models": [
+    "gru",
+    "lstm",
+    "transformer",
+    "rlt",
+    "scar",
+    "scar_carrier",
+    "scar_norecall"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_pairs": 4,
+  "eval_pairs": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32
+  ],
+  "eval_examples": 4096
+}
