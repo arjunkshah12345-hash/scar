@@ -55,7 +55,7 @@ for poll in $(seq 1 "$MAX_POLLS"); do
   complete=0
   for spec in "${KERNELS[@]}"; do
     IFS=: read -r kernel family expected <<<"$spec"
-    status="$(kaggle kernels status "aks1321/$kernel" 2>&1 | tail -n 1)"
+    status="$( { kaggle kernels status "aks1321/$kernel" 2>&1 || true; } | tail -n 1)"
     echo "[$(date +%H:%M)] $family: $status"
     if [[ "$status" == *COMPLETE* || "$status" == *ERROR* ]]; then
       if collect_one "$kernel" "$family" "$expected"; then
