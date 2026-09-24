@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from study2.validate import validate_artifact
+from study2.analyze import bootstrap_ci
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,3 +62,12 @@ def test_study2_validator_accepts_complete_shape():
         },
     }
     validate_artifact(row)
+
+
+def test_bootstrap_summary_is_deterministic_and_bounded():
+    import numpy as np
+
+    first = bootstrap_ci([100.0, 50.0, 0.0], np.random.default_rng(4), draws=1000)
+    second = bootstrap_ci([100.0, 50.0, 0.0], np.random.default_rng(4), draws=1000)
+    assert first == second
+    assert 0.0 <= first[0] <= first[1] <= 100.0
