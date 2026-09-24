@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+title: "SCAR: Constant-Size State-Carrying Memory with Attentive Recall"
+message: "If you use this code or results, please cite the SCAR paper."
+type: software
+authors:
+  - family-names: Shah
+    given-names: Arjun K.
+date-released: 2026-09-23
+version: 1.0.0
+license: MIT
+repository-code: "https://github.com/arjunkshah12345-hash/scar"
+url: "https://github.com/arjunkshah12345-hash/scar"
+abstract: >-
+  A controlled study of constant-size state-carrying memory, attentive recall,
+  supervision density, and long-horizon extrapolation on synthetic state-tracking tasks.

@@ -128,7 +128,7 @@ def test_ablation_param_counts_reported_and_close():
     # both ablations widen d to close the parameter gap from removing a module
     assert abs(n_carrier - n_scar) / n_scar < 0.03, (n_carrier, n_scar)
     assert abs(n_norecall - n_scar) / n_scar < 0.03, (n_norecall, n_scar)
-    print(f"\nscar={n_scar} scar_carrier(d=112)={n_carrier} scar_norecall(d=101)={n_norecall}")
+    print(f"\nscar={n_scar} scar_carrier(d=112)={n_carrier} scar_norecall(d=98)={n_norecall}")
 
 
 def test_scar_forward_shapes_and_mem_always_alive():

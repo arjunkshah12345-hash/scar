@@ -54,6 +54,10 @@ def timeit(fn, warmup=WARMUP, iters=ITERS):
 
 
 def main():
+    if not os.path.isdir("/kaggle/working"):
+        raise SystemExit(
+            "Refusing local benchmark/training-step timing. Run the cost kernel on Kaggle."
+        )
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/cost_bench.json")
     ap.add_argument("--threads", type=int, default=2, help="torch CPU threads (match sweep config)")
