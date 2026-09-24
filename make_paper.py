@@ -424,6 +424,11 @@ def study2_section():
             "fig:study2-recall",
         )
         + s2_figure(
+            "ratio_comparison.png",
+            "Study 2B: accuracy plotted against evaluation length divided by training length for two training contexts.",
+            "fig:study2-ratio",
+        )
+        + s2_figure(
             "selective_copy_entropy16_exact_sequence.png",
             "Study 2D: free-running exact-sequence accuracy for high-entropy selective copy.",
             "fig:study2-copy",

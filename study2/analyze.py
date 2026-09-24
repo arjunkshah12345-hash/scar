@@ -126,6 +126,37 @@ def plot_family(family, models, out, suffix="accuracy", ylabel="Accuracy (%)"):
     plt.close(fig)
 
 
+def plot_ratio_comparison(summary, out):
+    """Plot Study 2B against eval/train ratio across both training contexts."""
+    if "ratio32" not in summary or "ratio128" not in summary:
+        return
+    fig, ax = plt.subplots(figsize=(7.2, 4.6), constrained_layout=True)
+    styles = [("ratio32", 32, "-"), ("ratio128", 128, "--")]
+    models = sorted(set(summary["ratio32"]) | set(summary["ratio128"]))
+    for model in models:
+        for family, train_ops, linestyle in styles:
+            points = summary.get(family, {}).get(model, {})
+            if not points:
+                continue
+            contexts = sorted(int(k) for k in points)
+            x = np.asarray([context / train_ops for context in contexts])
+            y = np.asarray([points[str(context)]["mean"] for context in contexts])
+            lo = np.asarray([points[str(context)]["bootstrap95_mean"][0] for context in contexts])
+            hi = np.asarray([points[str(context)]["bootstrap95_mean"][1] for context in contexts])
+            label = f"{model} (train {train_ops})"
+            ax.plot(x, y, marker="o", linewidth=1.6, linestyle=linestyle, label=label)
+            ax.fill_between(x, lo, hi, alpha=0.08)
+    ax.set_xlabel("Evaluation length / training length")
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_title("Study 2B: length extrapolation by train/test ratio")
+    ax.set_xscale("log", base=2)
+    ax.set_ylim(0, 100)
+    ax.grid(alpha=0.25)
+    ax.legend(ncol=2, fontsize=7, frameon=False)
+    fig.savefig(out / "study2_ratio_comparison.png", dpi=180)
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("root", help="directory containing collected Study 2 JSON directories")
@@ -141,6 +172,7 @@ def main():
         json.dump(summary, f, indent=2)
     for family, models in summary.items():
         plot_family(family, models, out)
+    plot_ratio_comparison(summary, out)
 
     intervention_rows = [row for row in rows if row.get("interventions")]
     if intervention_rows:
