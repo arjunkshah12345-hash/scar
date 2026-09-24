@@ -16,7 +16,7 @@ SEEDS = range(3)
 EVAL_LENGTHS = "64,512,2048"
 
 if not WORK.exists():
-    subprocess.run(["git", "clone", "--branch", REF, "--single-branch", REPO, str(WORK)], check=True)
+    subprocess.run(["git", "clone", "--depth", "1", "--branch", REF, "--single-branch", REPO, str(WORK)], check=True)
 os.chdir(WORK)
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 root = WORK / "study2_results"

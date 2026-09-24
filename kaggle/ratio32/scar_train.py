@@ -16,7 +16,7 @@ EVAL_LENGTHS = "32,64,128,256,512"
 EXPECTED = len(MODELS) * len(list(SEEDS))
 
 if not WORK.exists():
-    subprocess.run(["git", "clone", "--branch", REF, "--single-branch", REPO, str(WORK)], check=True)
+    subprocess.run(["git", "clone", "--depth", "1", "--branch", REF, "--single-branch", REPO, str(WORK)], check=True)
 os.chdir(WORK)
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 OUT.mkdir(parents=True, exist_ok=True)

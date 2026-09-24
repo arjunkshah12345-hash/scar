@@ -23,7 +23,7 @@ def run(cmd, **kwargs):
 
 
 if not WORK.exists():
-    run(["git", "clone", "--branch", REF, "--single-branch", REPO, str(WORK)])
+    run(["git", "clone", "--depth", "1", "--branch", REF, "--single-branch", REPO, str(WORK)])
 os.chdir(WORK)
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 OUT.mkdir(parents=True, exist_ok=True)
