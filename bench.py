@@ -384,7 +384,7 @@ def logit_init(k, lam_min=0.90, lam_max=0.999):
 def count_params(m):
     return sum(p.numel() for p in m.parameters())
 
-def evaluate(model, eval_sets, device, bos):
+def evaluate(model, eval_sets, device, bos, eval_batch=256):
     model.eval()
     accs, times = {}, {}
     with torch.no_grad():
@@ -393,8 +393,8 @@ def evaluate(model, eval_sets, device, bos):
             n = seqs.shape[0]
             correct = 0
             t0 = time.perf_counter()
-            for i in range(0, n, 256):
-                xb, ab = seqs[i:i + 256], anss[i:i + 256]
+            for i in range(0, n, eval_batch):
+                xb, ab = seqs[i:i + eval_batch], anss[i:i + eval_batch]
                 pred = model(add_bos(xb, bos))[:, -1].argmax(-1)
                 correct += (pred == ab).sum().item()
             accs[ops] = 100.0 * correct / n
@@ -425,6 +425,15 @@ def main():
                          "before the full 32-bit chain; eval protocol unchanged")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", default="results")
+    ap.add_argument("--eval_lengths", default=None,
+                    help="comma-separated evaluation lengths; default uses the Study 1 task lengths")
+    ap.add_argument("--eval_examples", type=int, default=2048)
+    ap.add_argument("--eval_batch", type=int, default=256,
+                    help="evaluation batch size; lower this for long full-attention contexts")
+    ap.add_argument("--study", default="study1")
+    ap.add_argument("--protocol_version", default="study1")
+    ap.add_argument("--experiment_id", default=None,
+                    help="stable artifact ID; when supplied, output uses <experiment_id>.json")
     args = ap.parse_args()
     if args.train_ops is None:
         args.train_ops = DEFAULT_TRAIN_OPS[args.task]
@@ -432,6 +441,17 @@ def main():
         args.density = "dense" if args.task == "parity" else "sparse"
     if args.task == "recall" and args.density != "sparse":
         raise SystemExit("recall task is defined sparse-only (one answer after the delay)")
+    if args.eval_examples <= 0 or args.eval_batch <= 0:
+        raise SystemExit("eval_examples and eval_batch must be positive")
+    if args.eval_lengths:
+        try:
+            eval_lengths = tuple(sorted({int(x) for x in args.eval_lengths.split(",") if x.strip()}))
+        except ValueError as exc:
+            raise SystemExit("eval_lengths must be comma-separated positive integers") from exc
+        if not eval_lengths or any(x <= 0 for x in eval_lengths):
+            raise SystemExit("eval_lengths must contain positive integers")
+    else:
+        eval_lengths = EVAL_LENS[args.task]
 
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(1000 + args.seed)
@@ -472,10 +492,11 @@ def main():
     train_rng = np.random.default_rng(2000 + args.seed)
     eval_rng = np.random.default_rng(3000 + args.seed)
     eval_sets = {}
-    for ops in EVAL_LENS[args.task]:
-        eval_sets[ops] = make_fixed_eval(args.task, ops, 2048, eval_rng, auto)
+    for ops in eval_lengths:
+        eval_sets[ops] = make_fixed_eval(args.task, ops, args.eval_examples, eval_rng, auto)
 
     losses, step_ms = [], []
+    training_tokens = 0
     model.train()
     t_start = time.perf_counter()
     # curriculum schedule (sparse only): grow the train length 4 -> 8 -> 16 -> 32
@@ -495,6 +516,7 @@ def main():
                 if frac >= start:
                     ops_now = ops_c
         seq, ans, run = make_batch(args.task, ops_now, args.batch, train_rng, auto)
+        training_tokens += int(seq.numel())
         x = add_bos(seq, BOS)   # same convention as evaluation
         logits = model(x)   # (B, T, vocab)
         if args.density == "dense":
@@ -512,24 +534,45 @@ def main():
         if step % 500 == 0:
             print(f"  step {step} loss {np.mean(losses[-50:]):.4f}", flush=True)
 
-    accs, eval_times = evaluate(model, eval_sets, device, BOS)
+    accs, eval_times = evaluate(model, eval_sets, device, BOS, eval_batch=args.eval_batch)
     def git_commit():
         try:
             return subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL,
+                ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL,
                 text=True).strip()
         except Exception:
             return None
 
+    exp_id = args.experiment_id or f"{args.model}_{args.task}_{args.density}_seed{args.seed}"
+    commit = git_commit()
     out = {
-        "model": args.model, "task": args.task, "seed": args.seed,
+        "study": args.study, "protocol_version": args.protocol_version,
+        "experiment_id": exp_id,
+        "git_commit": commit,
+        "model": args.model, "variant": args.model,
+        "task": args.task, "seed": args.seed,
+        "task_parameters": {
+            "density": args.density,
+            "train_ops": args.train_ops,
+            "curriculum": bool(args.curriculum),
+        },
         "params": nparams, "steps": args.steps, "batch": args.batch,
-        "lr": args.lr, "train_ops": args.train_ops,
+        "batch_size": args.batch,
+        "lr": args.lr, "weight_decay": 0.01, "warmup_steps": warmup,
+        "lr_schedule": "linear_warmup_then_cosine_to_0.1",
+        "train_ops": args.train_ops,
+        "train_context": args.train_ops,
+        "training_examples": args.steps * args.batch,
+        "training_tokens": training_tokens,
         "curriculum": bool(args.curriculum),
-        "eval_lengths": sorted(eval_sets), "chance_pct": TASK_CHANCE[args.task],
+        "eval_lengths": sorted(eval_sets), "eval_examples": args.eval_examples,
+        "eval_contexts": sorted(eval_sets),
+        "chance_pct": TASK_CHANCE[args.task],
         "bos_token": BOS,
         "supervision": f"{args.task}_{args.density}",
-        "acc": accs, "eval_ms_per_program": eval_times,
+        "acc": accs, "metrics": {"accuracy_pct": accs},
+        "eval_ms_per_program": eval_times,
+        "inference_ms_per_example": eval_times,
         "train_ms_per_step": float(np.mean(step_ms[-500:])),
         "final_loss": float(np.mean(losses[-100:])),
         "train_seconds": time.perf_counter() - t_start,
@@ -537,12 +580,20 @@ def main():
             "torch": torch.__version__, "numpy": np.__version__,
             "python": platform.python_version(), "platform": platform.platform(),
             "device": device, "torch_threads": torch.get_num_threads(),
-            "git_commit": git_commit(),
+            "cpu": platform.processor() or platform.machine(),
+            "gpu": (torch.cuda.get_device_name(0) if torch.cuda.is_available() else None),
+            "git_commit": commit,
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        },
+        "optimizer": {"name": "AdamW", "lr": args.lr, "weight_decay": 0.01},
+        "raw_metrics": {
+            "accuracy_pct": accs,
+            "loss_tail": losses[-100:],
+            "step_ms_tail": step_ms[-500:],
         },
     }
     os.makedirs(args.out, exist_ok=True)
-    with open(os.path.join(args.out, f"{args.model}_{args.task}_{args.density}_seed{args.seed}.json"), "w") as f:
+    with open(os.path.join(args.out, f"{exp_id}.json"), "w") as f:
         json.dump(out, f, indent=2)
     print(json.dumps(out, indent=2), flush=True)
 
