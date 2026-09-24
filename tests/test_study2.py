@@ -3,6 +3,7 @@ from pathlib import Path
 
 from study2.validate import validate_artifact
 from study2.analyze import bootstrap_ci
+from study2.state_memory import persistent_state_bytes
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,3 +86,10 @@ def test_bootstrap_summary_is_deterministic_and_bounded():
     second = bootstrap_ci([100.0, 50.0, 0.0], np.random.default_rng(4), draws=1000)
     assert first == second
     assert 0.0 <= first[0] <= first[1] <= 100.0
+
+
+def test_persistent_state_scaling_matches_architecture_claim():
+    assert persistent_state_bytes("scar", 64) == persistent_state_bytes("scar", 4096)
+    assert persistent_state_bytes("gru", 64) == persistent_state_bytes("gru", 4096)
+    assert persistent_state_bytes("transformer", 4096) > persistent_state_bytes("transformer", 64)
+    assert persistent_state_bytes("rlt", 4096) > persistent_state_bytes("rlt", 64)
