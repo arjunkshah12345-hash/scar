@@ -23,12 +23,13 @@ import torch.nn.functional as F
 
 # ---------------- tasks ----------------
 
-TASK_CHANCE = {"parity": 50.0, "five": 20.0, "recall": 12.5}
-TASK_VOCAB = {"parity": 5, "five": 11, "recall": 10}   # BOS = vocab - 2
+TASK_CHANCE = {"parity": 50.0, "five": 20.0, "recall": 12.5, "assoc": 6.25}
+TASK_VOCAB = {"parity": 5, "five": 11, "recall": 10, "assoc": 50}
 EVAL_LENS = {"parity": (16, 32, 64, 128, 256),
              "five": (16, 32, 64, 128, 256),
-             "recall": (64, 128, 256, 512)}
-DEFAULT_TRAIN_OPS = {"parity": 32, "five": 32, "recall": 64}
+             "recall": (64, 128, 256, 512),
+             "assoc": (1, 2, 4, 8, 16, 32)}
+DEFAULT_TRAIN_OPS = {"parity": 32, "five": 32, "recall": 64, "assoc": 4}
 
 def gen_automaton(rng, n=5):
     # random permutation per transition token => T[s][a] gives next state
@@ -48,6 +49,26 @@ def make_batch(task, ops, bs, rng, auto):
         seq = rng.integers(0, 8, size=(bs, ops))
         ans = seq[:, 0].copy()
         run = np.tile(ans[:, None], (1, ops))      # placeholder; recall is sparse-only
+    elif task == "assoc":
+        # Key/value pairs use disjoint vocabularies. Token 16 is BOS and token
+        # 17 is a query marker; keys are 0..7 and values are 8..15. Each key
+        # occurs once in the pairs and is queried once at the end, so the
+        # answer cannot be recovered from a token-identity shortcut.
+        key_count, value_count = 32, 16
+        if ops < 1 or ops > key_count:
+            raise ValueError("assoc ops must be between 1 and 32 pairs")
+        seq = np.empty((bs, 2 * ops + 2), dtype=np.int64)
+        ans = np.empty(bs, dtype=np.int64)
+        for b in range(bs):
+            keys = rng.choice(key_count, size=ops, replace=False)
+            values = rng.integers(0, value_count, size=ops)
+            query_i = int(rng.integers(0, ops))
+            seq[b, 0:2 * ops:2] = keys
+            seq[b, 1:2 * ops:2] = values + key_count
+            seq[b, 2 * ops] = TASK_VOCAB["assoc"] - 1
+            seq[b, 2 * ops + 1] = keys[query_i]
+            ans[b] = values[query_i] + key_count
+        run = np.tile(ans[:, None], (1, seq.shape[1]))
     else:
         seq = rng.integers(0, 5, size=(bs, ops))
         state = np.zeros(bs, dtype=np.int64)
@@ -410,7 +431,7 @@ def main():
         )
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
-    ap.add_argument("--task", required=True, choices=["parity", "five", "recall"])
+    ap.add_argument("--task", required=True, choices=["parity", "five", "recall", "assoc"])
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--steps", type=int, default=3000)
     ap.add_argument("--batch", type=int, default=64)
@@ -439,8 +460,8 @@ def main():
         args.train_ops = DEFAULT_TRAIN_OPS[args.task]
     if args.density is None:
         args.density = "dense" if args.task == "parity" else "sparse"
-    if args.task == "recall" and args.density != "sparse":
-        raise SystemExit("recall task is defined sparse-only (one answer after the delay)")
+    if args.task in {"recall", "assoc"} and args.density != "sparse":
+        raise SystemExit(f"{args.task} task is defined sparse-only (one answer after the delay)")
     if args.eval_examples <= 0 or args.eval_batch <= 0:
         raise SystemExit("eval_examples and eval_batch must be positive")
     if args.eval_lengths:
@@ -561,12 +582,13 @@ def main():
         "lr": args.lr, "weight_decay": 0.01, "warmup_steps": warmup,
         "lr_schedule": "linear_warmup_then_cosine_to_0.1",
         "train_ops": args.train_ops,
-        "train_context": args.train_ops,
+        "train_context": (2 * args.train_ops + 2 if args.task == "assoc" else args.train_ops),
         "training_examples": args.steps * args.batch,
         "training_tokens": training_tokens,
         "curriculum": bool(args.curriculum),
         "eval_lengths": sorted(eval_sets), "eval_examples": args.eval_examples,
         "eval_contexts": sorted(eval_sets),
+        "eval_context_tokens": [2 * x + 2 for x in sorted(eval_sets)] if args.task == "assoc" else sorted(eval_sets),
         "chance_pct": TASK_CHANCE[args.task],
         "bos_token": BOS,
         "supervision": f"{args.task}_{args.density}",

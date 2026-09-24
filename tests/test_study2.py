@@ -24,6 +24,16 @@ def test_recall_length_kernel_is_cloud_only_and_provenance_aware():
     assert "/kaggle/working" in driver
 
 
+def test_associative_recall_kernel_is_separate_from_study1():
+    metadata = ROOT / "kaggle" / "associative-recall" / "kernel-metadata.json"
+    driver = ROOT / "kaggle" / "associative-recall" / "scar_train.py"
+    assert metadata.exists() and driver.exists()
+    source = driver.read_text()
+    assert "--task" in source and '"assoc"' in source
+    assert "v3C_assoc_train4" in source
+    assert "study2_results" in source
+
+
 def test_study2_validator_accepts_complete_shape():
     row = {
         "study": "study2", "protocol_version": "v3.0",

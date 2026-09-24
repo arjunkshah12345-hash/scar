@@ -81,11 +81,13 @@ def test_eval_prepends_bos_and_scores_protocol_consistently():
 
 def test_train_uses_bos_prefix():
     # training batches must start with BOS = vocab - 2 for every task
-    for task, vocab, chance in [("parity", 5, 50.0), ("five", 11, 20.0), ("recall", 10, 12.5)]:
+    for task, vocab, chance in [("parity", 5, 50.0), ("five", 11, 20.0),
+                                ("recall", 10, 12.5), ("assoc", 50, 6.25)]:
         auto = gen_automaton(np.random.default_rng(3)) if task == "five" else None
         seq, ans, run = make_batch(task, 8, 4, np.random.default_rng(0), auto)
         x = add_bos(seq, vocab - 2)
-        assert x.shape == (4, 9)
+        expected_len = 2 * 8 + 3 if task == "assoc" else 9
+        assert x.shape == (4, expected_len)
         assert (x[:, 0] == vocab - 2).all()
         assert TASK_CHANCE[task] == chance
 
@@ -115,6 +117,22 @@ def test_recall_task_definition():
     assert torch.equal(ans, seq[:, 0]), "answer must be the first token"
     assert TASK_CHANCE["recall"] == 12.5
     assert bench.DEFAULT_TRAIN_OPS["recall"] == 64
+
+
+def test_associative_recall_has_disjoint_keys_values_and_query():
+    seq, ans, run = make_batch("assoc", 4, 64, np.random.default_rng(17), None)
+    assert seq.shape == (64, 10)  # 4 key/value pairs + query marker/key
+    assert (seq[:, :-2] < 48).all()
+    assert (seq[:, -2] == 49).all()
+    assert (seq[:, -1] < 32).all()
+    assert ((ans >= 32) & (ans < 48)).all()
+    for row, target in zip(seq.numpy(), ans.numpy()):
+        keys = row[:8:2]
+        values = row[1:8:2]
+        query = row[-1]
+        assert (keys == query).sum() == 1
+        assert target == values[int(np.flatnonzero(keys == query)[0])]
+    assert bench.TASK_CHANCE["assoc"] == 6.25
 
 
 # ---------- 5. ablation parameter counts ----------
