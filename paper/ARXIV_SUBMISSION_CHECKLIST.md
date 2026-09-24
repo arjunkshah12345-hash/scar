@@ -8,8 +8,8 @@ Do not upload the paper until every Study 2 family is complete and validated.
 - [ ] Every declared family passes `python3 -m study2.validate` with its exact
       expected count; manifests are provenance metadata, not result rows.
 - [ ] `python3 -m study2.analyze study2_results --out analysis/study2` has
-      produced per-seed summaries, bootstrap intervals, and exact-sequence
-      plots where applicable.
+      produced per-seed summaries, bootstrap intervals, intervention summaries,
+      and exact-sequence plots where applicable.
 - [ ] The paper reports per-seed values and uncertainty, but does not call
       cells “statistically tied” without a declared statistical test.
 - [ ] The 512-token Study 1 recall result, the 3.12x-GRU cost result, and the
@@ -17,6 +17,8 @@ Do not upload the paper until every Study 2 family is complete and validated.
 - [ ] `python3 -m pytest tests/ -q` passes and `git diff --check` is clean.
 - [ ] `paper/paper.tex` compiles with `tectonic`; all referenced figures and
       bibliography entries are present.
+- [ ] `python3 make_paper.py` reproduces the committed `paper/paper.tex` and
+      figures from the validated artifacts without modifying the worktree.
 - [ ] Upload `paper.tex`, `figures/`, and bibliography/source files only. Do
       not upload checkpoints, local training directories, browser data, or
       temporary Kaggle logs.
