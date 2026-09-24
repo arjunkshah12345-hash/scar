@@ -46,9 +46,21 @@ def load(root):
         with path.open() as f:
             row = json.load(f)
         validate_artifact(row, path)
-        row["_family"] = path.parent.name
+        row["_family"] = family_name(row, path)
         rows.append(row)
     return rows
+
+
+def family_name(row, path):
+    family = path.parent.name
+    params = row.get("task_parameters", {})
+    if row.get("task") == "selective_copy":
+        return f"{family}_entropy{params['distractor_vocab']}"
+    if family == "mechanism":
+        if row["experiment_id"].startswith("v3E_slot"):
+            return f"{family}_slots{params['scar_k']}"
+        return f"{family}_decay_{params['scar_decay_mode']}"
+    return family
 
 
 def aggregate(rows, metric_key="accuracy_pct"):

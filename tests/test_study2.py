@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from study2.validate import validate_artifact
-from study2.analyze import bootstrap_ci
+from study2.analyze import bootstrap_ci, family_name
 from study2.state_memory import persistent_state_bytes
 from study2.selective_copy import BOS, MARK, SLOT, make_batch
 
@@ -115,6 +115,26 @@ def test_bootstrap_summary_is_deterministic_and_bounded():
     second = bootstrap_ci([100.0, 50.0, 0.0], np.random.default_rng(4), draws=1000)
     assert first == second
     assert 0.0 <= first[0] <= first[1] <= 100.0
+
+
+def test_analysis_keeps_mechanism_and_entropy_conditions_separate(tmp_path):
+    selective = {
+        "task": "selective_copy",
+        "task_parameters": {"distractor_vocab": 2},
+    }
+    slot = {
+        "task": "recall",
+        "experiment_id": "v3E_slot16_seed0",
+        "task_parameters": {"scar_k": 16, "scar_decay_mode": "learned_multi"},
+    }
+    decay = {
+        "task": "recall",
+        "experiment_id": "v3E_decay_learned_multi_seed0",
+        "task_parameters": {"scar_k": 16, "scar_decay_mode": "learned_multi"},
+    }
+    assert family_name(selective, tmp_path / "selective_copy" / "x.json") == "selective_copy_entropy2"
+    assert family_name(slot, tmp_path / "mechanism" / "x.json") == "mechanism_slots16"
+    assert family_name(decay, tmp_path / "mechanism" / "x.json") == "mechanism_decay_learned_multi"
 
 
 def test_persistent_state_scaling_matches_architecture_claim():
