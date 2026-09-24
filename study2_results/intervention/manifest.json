@@ -1,0 +1,19 @@
+{
+  "study": "study2",
+  "protocol_version": "v3.0",
+  "experiment_family": "v3E_intervention",
+  "git_commit": "1a354d9dbc59504f7327c6fc44ba3fa83a0f1036",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "eval_lengths": [
+    64,
+    512,
+    2048,
+    4096
+  ]
+}
