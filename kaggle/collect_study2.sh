@@ -20,7 +20,7 @@ declare -a KERNELS=(
   "scar-v3-ratio128:ratio128:18"
   "scar-v3-mechanism:mechanism:33"
   "scar-v3-intervention:intervention:5"
-  "scar-v3-selective-copy:selective_copy:21"
+  "scar-v3-selective-copy:selective_copy:42"
 )
 
 collect_one() {

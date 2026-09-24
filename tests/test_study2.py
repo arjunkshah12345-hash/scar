@@ -150,7 +150,8 @@ def test_selective_copy_kernel_is_cloud_only_and_multi_output():
     driver = ROOT / "kaggle" / "selective-copy" / "scar_train.py"
     assert metadata.exists() and driver.exists()
     source = driver.read_text()
-    assert "v3D_copy_items64" in source
+    assert "v3D_copy_items64_entropy" in source
+    assert "CONDITIONS = [(\"high\", 16), (\"low\", 2)]" in source
     assert "study2.selective_copy" in source
     module = (ROOT / "study2" / "selective_copy.py").read_text()
     assert "free_running_exact_sequence_pct" in module
