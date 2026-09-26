@@ -1,0 +1,36 @@
+{
+  "study": "study2",
+  "protocol_version": "v3.0",
+  "experiment_family": "v3D_selective_copy",
+  "git_commit": "00153a55da25794600f4381939274b0457afa1f4",
+  "models": [
+    "gru",
+    "lstm",
+    "transformer",
+    "rlt",
+    "scar",
+    "scar_carrier",
+    "scar_norecall"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_items": 16,
+  "train_marked": 4,
+  "eval_items": 64,
+  "eval_marked": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32
+  ],
+  "eval_examples": 4096,
+  "distractor_conditions": {
+    "high": 16,
+    "low": 2
+  }
+}
