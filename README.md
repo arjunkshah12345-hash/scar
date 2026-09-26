@@ -78,6 +78,14 @@ interventions. Every Study 2 driver clones the exact `research/v3` commit and
 writes provenance-rich JSON under `study2_results/`; no optimizer step is
 allowed on the local machine.
 
+The primary Study 2 release gate is the seven-family, 172-run matrix: recall
+length (35), ratio32 (18), ratio128 (18), associative recall (21), selective
+copy (42), mechanism (33), and intervention (5). The supervision/curriculum
+comparison and language-modeling extension described as exploratory follow-ups
+in the protocol are deliberately outside this primary release: no language
+model result is claimed, and the existing curriculum archive remains separate
+from the fixed-density Study 1 tables.
+
 After the Kaggle kernels finish, collect and validate them locally with:
 
 ```
