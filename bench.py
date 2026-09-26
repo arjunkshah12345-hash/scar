@@ -370,6 +370,49 @@ class SCAR(nn.Module):
             return torch.sigmoid(self.log_lam).expand(self.k)
         return self.fixed_lam
 
+    @torch.no_grad()
+    def memory_diagnostics(self, x):
+        """Summarize slot use on a post-training stream without optimizer work.
+
+        This deliberately mirrors the SCAR update/read equations but returns
+        only aggregate diagnostics. It is used by the Kaggle mechanism sweep;
+        it is not part of training or model selection.
+        """
+        if not self.use_memory:
+            return {}
+        B, T = x.shape
+        h = torch.zeros(B, self.d, device=x.device)
+        mem = torch.zeros(B, self.k, self.d, device=x.device)
+        lam = self.decay().view(1, self.k, 1)
+        slot_norm_sum = torch.zeros(self.k, device=x.device)
+        read_sum = torch.zeros(self.k, device=x.device)
+        entropy_sum = torch.zeros((), device=x.device)
+        for t in range(T):
+            e = self.emb(x[:, t])
+            h = self.cell(e, h)
+            u = torch.sigmoid(self.gw(torch.cat([e, h], dim=-1))) * h
+            mem = lam * mem + (1 - lam) * u.unsqueeze(1)
+            slot_norm_sum += mem.norm(dim=-1).mean(0)
+            if self.use_recall:
+                q = self.wq(self.ln_r(h)).view(B, 1, self.r)
+                att = (q @ self.wk(mem).transpose(1, 2) / math.sqrt(self.r)).softmax(-1)
+                read_sum += att.squeeze(1).mean(0)
+                entropy_sum += (-(att * att.clamp_min(1e-12).log()).sum(-1)).mean()
+        flat = mem.transpose(0, 1).reshape(self.k, -1)
+        normalized = F.normalize(flat, dim=1)
+        corr = normalized @ normalized.transpose(0, 1)
+        if self.k > 1:
+            off_diag = ~torch.eye(self.k, dtype=torch.bool, device=x.device)
+            corr_abs = corr.abs()[off_diag].mean()
+        else:
+            corr_abs = torch.zeros((), device=x.device)
+        return {
+            "slot_norm_mean": (slot_norm_sum / max(T, 1)).cpu().tolist(),
+            "read_attention_mean": (read_sum / max(T, 1)).cpu().tolist(),
+            "attention_entropy_mean": float((entropy_sum / max(T, 1)).cpu()),
+            "slot_correlation_abs_mean": float(corr_abs.cpu()),
+        }
+
     def forward(self, x, targets=None, intervention=None):
         B, T = x.shape
         h = torch.zeros(B, self.d, device=x.device)
@@ -537,6 +580,9 @@ def main():
     }
     auto = gen_automaton(rng) if args.task == "five" else None
     model = MODELS[args.model](vocab, cfg)
+    initial_decay = None
+    if args.model == "scar" and model.use_memory:
+        initial_decay = model.decay().detach().cpu().tolist()
     nparams = count_params(model)
     print(f"[{args.model}/{args.task}/s{args.seed}] params={nparams}", flush=True)
 
@@ -610,6 +656,19 @@ def main():
                 model, eval_sets, device, BOS, eval_batch=args.eval_batch,
                 forward_kwargs={"intervention": intervention_map[name]},
             )
+    memory_analysis = {}
+    if args.model == "scar" and model.use_memory:
+        longest = eval_sets[max(eval_lengths)][0]
+        memory_analysis = model.memory_diagnostics(add_bos(longest[:min(256, len(longest))], BOS))
+        final_decay = model.decay().detach().cpu().tolist()
+        memory_analysis.update({
+            "initial_decay": initial_decay,
+            "final_decay": final_decay,
+            "initial_half_life": [math.log(0.5) / math.log(max(x, 1e-12)) for x in initial_decay],
+            "final_half_life": [math.log(0.5) / math.log(max(x, 1e-12)) for x in final_decay],
+            "diagnostic_eval_context": int(max(eval_lengths)),
+            "diagnostic_examples": int(min(256, len(longest))),
+        })
     def git_commit():
         try:
             return subprocess.check_output(
@@ -650,6 +709,7 @@ def main():
         "supervision": f"{args.task}_{args.density}",
         "acc": accs, "metrics": {"accuracy_pct": accs},
         "interventions": intervention_accs,
+        "memory_analysis": memory_analysis,
         "eval_ms_per_program": eval_times,
         "inference_ms_per_example": eval_times,
         "train_ms_per_step": float(np.mean(step_ms[-500:])),

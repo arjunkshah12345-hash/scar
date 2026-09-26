@@ -233,6 +233,18 @@ def test_persistent_state_scaling_matches_architecture_claim():
     assert persistent_state_bytes("rlt", 4096) > persistent_state_bytes("rlt", 64)
 
 
+def test_scar_memory_diagnostics_are_post_training_only():
+    import torch
+    from bench import SCAR
+
+    model = SCAR(vocab=5, k=4)
+    diagnostics = model.memory_diagnostics(torch.zeros(3, 7, dtype=torch.long))
+    assert len(diagnostics["slot_norm_mean"]) == 4
+    assert len(diagnostics["read_attention_mean"]) == 4
+    assert diagnostics["attention_entropy_mean"] >= 0.0
+    assert 0.0 <= diagnostics["slot_correlation_abs_mean"] <= 1.0
+
+
 def test_selective_copy_batch_marks_ordered_targets_and_slots():
     import numpy as np
 
