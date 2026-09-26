@@ -105,6 +105,41 @@ def aggregate_interventions(rows):
     return summary
 
 
+def aggregate_memory_diagnostics(rows):
+    """Aggregate post-training SCAR slot/timescale diagnostics by seed."""
+    rng = np.random.default_rng(20260924)
+    grouped = defaultdict(list)
+    for row in rows:
+        diagnostics = row.get("memory_analysis") or {}
+        if not diagnostics:
+            continue
+        family = row["_family"]
+        model = row["model"]
+        for key in (
+            "initial_decay", "final_decay", "initial_half_life", "final_half_life",
+            "slot_norm_mean", "read_attention_mean",
+        ):
+            values = diagnostics.get(key)
+            if isinstance(values, list):
+                for index, value in enumerate(values):
+                    grouped[(family, model, key, index)].append((row["seed"], float(value)))
+        for key in ("attention_entropy_mean", "slot_correlation_abs_mean"):
+            if key in diagnostics:
+                grouped[(family, model, key, None)].append(
+                    (row["seed"], float(diagnostics[key]))
+                )
+    output = {}
+    for (family, model, key, index), pairs in sorted(grouped.items()):
+        pairs.sort()
+        target = output.setdefault(family, {}).setdefault(model, {}).setdefault(key, {})
+        target["scalar" if index is None else str(index)] = summarize(
+            [value for _seed, value in pairs],
+            [seed for seed, _value in pairs],
+            rng,
+        )
+    return output
+
+
 def plot_family(family, models, out, suffix="accuracy", ylabel="Accuracy (%)"):
     fig, ax = plt.subplots(figsize=(7.2, 4.6), constrained_layout=True)
     for model, points in sorted(models.items()):
@@ -179,6 +214,12 @@ def main():
         intervention_summary = aggregate_interventions(intervention_rows)
         with (out / "intervention_summary.json").open("w") as f:
             json.dump(intervention_summary, f, indent=2)
+
+    diagnostic_rows = [row for row in rows if row.get("memory_analysis")]
+    if diagnostic_rows:
+        diagnostics = aggregate_memory_diagnostics(diagnostic_rows)
+        with (out / "mechanism_diagnostics.json").open("w") as f:
+            json.dump(diagnostics, f, indent=2)
 
     exact_rows = [
         row for row in rows

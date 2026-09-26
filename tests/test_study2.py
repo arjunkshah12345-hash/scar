@@ -2,7 +2,12 @@
 from pathlib import Path
 
 from study2.validate import validate_artifact
-from study2.analyze import aggregate_interventions, bootstrap_ci, family_name
+from study2.analyze import (
+    aggregate_interventions,
+    aggregate_memory_diagnostics,
+    bootstrap_ci,
+    family_name,
+)
 from study2.state_memory import persistent_state_bytes
 from study2.selective_copy import BOS, MARK, SLOT, make_batch
 
@@ -157,6 +162,34 @@ def test_analysis_preserves_intervention_metrics():
     summary = aggregate_interventions(rows)
     assert summary["intervention"]["scar"]["fastest"]["512"]["mean"] == 45.0
     assert summary["intervention"]["scar"]["shuffle"]["64"]["n_seeds"] == 2
+
+
+def test_analysis_preserves_memory_timescale_diagnostics():
+    rows = [{
+        "_family": "mechanism_decay_learned_multi",
+        "model": "scar",
+        "seed": 0,
+        "memory_analysis": {
+            "initial_decay": [0.9, 0.99], "final_decay": [0.91, 0.98],
+            "initial_half_life": [6.6, 69.0], "final_half_life": [7.3, 34.3],
+            "slot_norm_mean": [1.0, 2.0], "read_attention_mean": [0.4, 0.6],
+            "attention_entropy_mean": 0.5, "slot_correlation_abs_mean": 0.2,
+        },
+    }, {
+        "_family": "mechanism_decay_learned_multi",
+        "model": "scar",
+        "seed": 1,
+        "memory_analysis": {
+            "initial_decay": [0.9, 0.99], "final_decay": [0.92, 0.97],
+            "initial_half_life": [6.6, 69.0], "final_half_life": [8.3, 22.8],
+            "slot_norm_mean": [1.2, 1.8], "read_attention_mean": [0.5, 0.5],
+            "attention_entropy_mean": 0.7, "slot_correlation_abs_mean": 0.4,
+        },
+    }]
+    summary = aggregate_memory_diagnostics(rows)
+    result = summary["mechanism_decay_learned_multi"]["scar"]
+    assert result["final_decay"]["0"]["n_seeds"] == 2
+    assert result["attention_entropy_mean"]["scalar"]["mean"] == 0.6
 
 
 def test_intervention_validator_requires_all_frozen_perturbations(tmp_path):
