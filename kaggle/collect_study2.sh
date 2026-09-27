@@ -29,10 +29,16 @@ collect_one() {
   local expected="$3"
   local status="$4"
   local tmp="/tmp/scar-v3-output-${family}-$$"
+  local marker="/tmp/scar-v3-collected-${family}-$$"
   local dest="$DEST/$family"
   mkdir -p "$tmp" "$dest"
   local count
   count="$(find "$dest" -maxdepth 1 -type f -name 'v3*.json' | wc -l | tr -d ' ')"
+  if [[ "$status" == *COMPLETE* && -f "$marker" ]]; then
+    python3 -m study2.validate "$dest" --expected-count "$expected"
+    echo "$family: $count/$expected artifacts already collected this poll run"
+    return 0
+  fi
   # A failed kernel may still have produced a complete, validated family
   # before failing during notebook packaging. Reuse that evidence. A newly
   # COMPLETE kernel, however, must refresh the destination: otherwise a clean
@@ -41,6 +47,7 @@ collect_one() {
   if [[ "$status" == *ERROR* && "$count" == "$expected" ]]; then
     python3 -m study2.validate "$dest" --expected-count "$expected"
     echo "$family: $count/$expected artifacts already collected"
+    touch "$marker"
     return 0
   fi
   kaggle kernels output "aks1321/$kernel" -p "$tmp" --force >/dev/null 2>&1 || true
@@ -96,6 +103,7 @@ collect_one() {
   echo "$family: $count/$expected artifacts"
   if [[ "$count" == "$expected" ]]; then
     python3 -m study2.validate "$dest" --expected-count "$expected"
+    touch "$marker"
     return 0
   fi
   return 1
