@@ -44,11 +44,24 @@ collect_one() {
     return 0
   fi
   kaggle kernels output "aks1321/$kernel" -p "$tmp" --force >/dev/null 2>&1 || true
-  local downloaded
-  downloaded="$(find "$tmp" -type f -name 'v3*.json' | wc -l | tr -d ' ')"
-  if [[ "$status" == *COMPLETE* && "$downloaded" == "0" ]]; then
-    echo "$family: COMPLETE kernel returned no JSON artifacts" >&2
+  local selected_count
+  if [[ "$family" == "mechanism" ]]; then
+    selected_count="$(find "$tmp" -type f \( \
+      -path "*/study2-results/slot_sweep/v3*.json" -o \
+      -path "*/study2-results/decay_sweep/v3*.json" \
+    \) | wc -l | tr -d ' ')"
+  else
+    selected_count="$(find "$tmp" -type f \
+      -path "*/study2-results/$family/v3*.json" | wc -l | tr -d ' ')"
+  fi
+  if [[ "$status" == *COMPLETE* && "$selected_count" != "$expected" ]]; then
+    echo "$family: COMPLETE kernel returned $selected_count/$expected family artifacts" >&2
     return 1
+  fi
+  if [[ "$status" == *COMPLETE* ]]; then
+    # Replace, rather than append to, a destination from an earlier failed
+    # collection attempt.
+    find "$dest" -maxdepth 1 -type f -name 'v3*.json' -delete
   fi
   if [[ "$family" == "mechanism" ]]; then
     # The mechanism driver exposes two output subfamilies in the Kaggle
