@@ -19,8 +19,14 @@ if not WORK.exists():
     subprocess.run(["git", "clone", "--depth", "1", "--branch", REF, "--single-branch", REPO, str(WORK)], check=True)
 os.chdir(WORK)
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+# A canceled/restarted Kaggle version can retain its working tree. Remove
+# stale family outputs so exact-count validation describes this version only.
+if OUT.exists():
+    shutil.rmtree(OUT)
 OUT.mkdir(parents=True, exist_ok=True)
 logs = WORK / "study2_logs" / "ratio128"
+if logs.exists():
+    shutil.rmtree(logs)
 logs.mkdir(parents=True, exist_ok=True)
 (OUT / "manifest.json").write_text(json.dumps({
     "study": "study2", "protocol_version": "v3.0",
@@ -40,7 +46,7 @@ for model in MODELS:
         cmd = [sys.executable, "bench.py", "--model", model, "--task", "recall",
                "--density", "sparse", "--seed", str(seed), "--steps", "2500",
                "--train_ops", "128", "--eval_lengths", EVAL_LENGTHS,
-               "--eval_examples", "2048", "--eval_batch", "1" if model in {"transformer", "rlt"} else "256",
+               "--eval_examples", "2048", "--eval_batch", "8" if model in {"transformer", "rlt"} else "256",
                "--device", "cpu", "--study", "study2", "--protocol_version", "v3.0",
                "--experiment_id", experiment_id, "--out", str(OUT)]
         with log_path.open("w") as log:

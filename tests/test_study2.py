@@ -56,6 +56,14 @@ def test_retryable_kernels_clear_stale_output_before_exact_count_validation():
         assert "shutil.rmtree(OUT)" in driver
 
 
+def test_long_recall_kernels_batch_full_attention_evaluation():
+    for name in ("recall-length", "ratio128"):
+        driver = (ROOT / "kaggle" / name / "scar_train.py").read_text()
+        assert "if OUT.exists():" in driver
+        assert "shutil.rmtree(OUT)" in driver
+        assert '"8" if model in {"transformer", "rlt"}' in driver
+
+
 def test_collector_filters_kaggle_bundle_to_published_family_outputs():
     collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
     assert '*/study2-results/$family/v3*.json' in collector

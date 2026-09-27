@@ -24,8 +24,14 @@ if not WORK.exists():
     run(["git", "clone", "--depth", "1", "--branch", REF, "--single-branch", REPO, str(WORK)])
 os.chdir(WORK)
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+# A canceled/restarted Kaggle version can retain its working tree. Remove
+# stale family outputs so exact-count validation describes this version only.
+if OUT.exists():
+    shutil.rmtree(OUT)
 OUT.mkdir(parents=True, exist_ok=True)
 log_dir = WORK / "study2_logs" / "recall_length"
+if log_dir.exists():
+    shutil.rmtree(log_dir)
 log_dir.mkdir(parents=True, exist_ok=True)
 
 manifest = {
@@ -43,7 +49,9 @@ manifest = {
 (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
 for model in MODELS:
-    eval_batch = "1" if model in {"transformer", "rlt"} else "256"
+    # Keep all 4,096 evaluation examples and contexts, but batch the long
+    # full-attention baselines so the complete family fits Kaggle's runtime.
+    eval_batch = "8" if model in {"transformer", "rlt"} else "256"
     for seed in SEEDS:
         experiment_id = f"v3A_recall_train64_{model}_seed{seed}"
         artifact = OUT / f"{experiment_id}.json"
