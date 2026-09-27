@@ -24,8 +24,15 @@ if not WORK.exists():
     run(["git", "clone", "--depth", "1", "--branch", REF, "--single-branch", REPO, str(WORK)])
 os.chdir(WORK)
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+# Kaggle can retain /kaggle/working across a failed/restarted kernel version.
+# Start this family from an empty output directory so stale v3 JSONs cannot
+# make the exact-count validator reject an otherwise complete rerun.
+if OUT.exists():
+    shutil.rmtree(OUT)
 OUT.mkdir(parents=True, exist_ok=True)
 log_dir = WORK / "study2_logs" / "associative_recall"
+if log_dir.exists():
+    shutil.rmtree(log_dir)
 log_dir.mkdir(parents=True, exist_ok=True)
 
 manifest = {

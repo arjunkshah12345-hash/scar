@@ -49,6 +49,13 @@ def test_ratio_kernels_have_distinct_experiment_families():
         assert f"v3B_recall_{train_ops}" in driver
 
 
+def test_retryable_kernels_clear_stale_output_before_exact_count_validation():
+    for name in ("associative-recall", "ratio32"):
+        driver = (ROOT / "kaggle" / name / "scar_train.py").read_text()
+        assert "if OUT.exists():" in driver
+        assert "shutil.rmtree(OUT)" in driver
+
+
 def test_mechanism_kernel_covers_slots_and_decay_modes():
     driver = (ROOT / "kaggle" / "mechanism" / "scar_train.py").read_text()
     assert "--scar_k" in driver and "--scar_decay_mode" in driver
