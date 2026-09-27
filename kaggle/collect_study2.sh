@@ -27,17 +27,29 @@ collect_one() {
   local kernel="$1"
   local family="$2"
   local expected="$3"
-  local tmp="/tmp/scar-v3-output-${family}"
+  local status="$4"
+  local tmp="/tmp/scar-v3-output-${family}-$$"
   local dest="$DEST/$family"
   mkdir -p "$tmp" "$dest"
   local count
   count="$(find "$dest" -maxdepth 1 -type f -name 'v3*.json' | wc -l | tr -d ' ')"
-  if [[ "$count" == "$expected" ]]; then
+  # A failed kernel may still have produced a complete, validated family
+  # before failing during notebook packaging. Reuse that evidence. A newly
+  # COMPLETE kernel, however, must refresh the destination: otherwise a clean
+  # rerun can be silently ignored when the old family already has the same
+  # expected count.
+  if [[ "$status" == *ERROR* && "$count" == "$expected" ]]; then
     python3 -m study2.validate "$dest" --expected-count "$expected"
     echo "$family: $count/$expected artifacts already collected"
     return 0
   fi
   kaggle kernels output "aks1321/$kernel" -p "$tmp" --force >/dev/null 2>&1 || true
+  local downloaded
+  downloaded="$(find "$tmp" -type f -name 'v3*.json' | wc -l | tr -d ' ')"
+  if [[ "$status" == *COMPLETE* && "$downloaded" == "0" ]]; then
+    echo "$family: COMPLETE kernel returned no JSON artifacts" >&2
+    return 1
+  fi
   find "$tmp" -type f -name 'v3*.json' -exec cp {} "$dest"/ \;
   local manifest
   manifest="$(find "$tmp" -type f -path "*/study2_results/$family/manifest.json" | head -n 1)"
@@ -64,7 +76,7 @@ for poll in $(seq 1 "$MAX_POLLS"); do
     status="$( { kaggle kernels status "aks1321/$kernel" 2>&1 || true; } | tail -n 1)"
     echo "[$(date +%H:%M)] $family: $status"
     if [[ "$status" == *COMPLETE* || "$status" == *ERROR* ]]; then
-      if collect_one "$kernel" "$family" "$expected"; then
+      if collect_one "$kernel" "$family" "$expected" "$status"; then
         complete=$((complete + 1))
       fi
     fi
