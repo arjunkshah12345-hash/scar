@@ -56,6 +56,13 @@ def test_retryable_kernels_clear_stale_output_before_exact_count_validation():
         assert "shutil.rmtree(OUT)" in driver
 
 
+def test_collector_filters_kaggle_bundle_to_published_family_outputs():
+    collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
+    assert '*/study2-results/$family/v3*.json' in collector
+    assert '*/study2-results/slot_sweep/v3*.json' in collector
+    assert '*/study2-results/decay_sweep/v3*.json' in collector
+
+
 def test_mechanism_kernel_covers_slots_and_decay_modes():
     driver = (ROOT / "kaggle" / "mechanism" / "scar_train.py").read_text()
     assert "--scar_k" in driver and "--scar_decay_mode" in driver

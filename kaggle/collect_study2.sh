@@ -50,9 +50,28 @@ collect_one() {
     echo "$family: COMPLETE kernel returned no JSON artifacts" >&2
     return 1
   fi
-  find "$tmp" -type f -name 'v3*.json' -exec cp {} "$dest"/ \;
+  if [[ "$family" == "mechanism" ]]; then
+    # The mechanism driver exposes two output subfamilies in the Kaggle
+    # bundle; never copy the repository checkout or unrelated family files.
+    find "$tmp" -type f \( \
+      -path "*/study2-results/slot_sweep/v3*.json" -o \
+      -path "*/study2-results/decay_sweep/v3*.json" \
+    \) -exec cp {} "$dest"/ \;
+  else
+    # Kaggle packages the complete /kaggle/working tree. Select only the
+    # published output directory, not committed JSONs from the checkout.
+    find "$tmp" -type f \
+      -path "*/study2-results/$family/v3*.json" \
+      -exec cp {} "$dest"/ \;
+  fi
   local manifest
-  manifest="$(find "$tmp" -type f -path "*/study2_results/$family/manifest.json" | head -n 1)"
+  manifest="$(find "$tmp" -type f -path "*/study2-results/$family/manifest.json" | head -n 1)"
+  if [[ -z "$manifest" ]]; then
+    # Mechanism's combined family manifest was created in the cloned
+    # checkout by older driver versions; it is still acceptable provenance
+    # when the artifact paths above came from the published output bundle.
+    manifest="$(find "$tmp" -type f -path "*/study2_results/$family/manifest.json" | head -n 1)"
+  fi
   if [[ -z "$manifest" && "$family" == "mechanism" ]]; then
     manifest="$(find "$tmp" -type f \( \
       -path "*/study2_results/slot_sweep/manifest.json" -o \

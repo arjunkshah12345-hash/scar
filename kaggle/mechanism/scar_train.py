@@ -70,5 +70,8 @@ family_manifest.write_text(json.dumps({
     "seeds": list(SEEDS), "expected_count": 33,
     "subfamilies": {"slot_sweep": 21, "decay_sweep": 12},
 }, indent=2))
+family_output = Path("/kaggle/working/study2-results/mechanism")
+family_output.mkdir(parents=True, exist_ok=True)
+shutil.copy2(family_manifest, family_output / "manifest.json")
 shutil.copytree(logs, "/kaggle/working/study2-logs/mechanism", dirs_exist_ok=True)
 print(f"Study 2E complete: {expected} artifacts")
