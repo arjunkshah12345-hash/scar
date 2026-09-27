@@ -49,13 +49,13 @@ for family, value, prefix in MODELS:
             raise SystemExit(f"failed: {experiment_id}; inspect {log_path}")
 
 for directory, count in ((root / "slot_sweep", 21), (root / "decay_sweep", 12)):
-    subprocess.run([sys.executable, "-m", "study2.validate", str(directory), "--expected-count", str(count)], check=True)
     (directory / "manifest.json").write_text(json.dumps({
         "study": "study2", "protocol_version": "v3.0",
         "experiment_family": directory.name, "git_commit": commit,
         "eval_lengths": [int(x) for x in EVAL_LENGTHS.split(",")],
         "seeds": list(SEEDS),
     }, indent=2))
+    subprocess.run([sys.executable, "-m", "study2.validate", str(directory), "--expected-count", str(count)], check=True)
     shutil.copytree(directory, f"/kaggle/working/study2-results/{directory.name}", dirs_exist_ok=True)
 
 # Expose one family-level manifest for the collector. The two sweep manifests
