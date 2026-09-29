@@ -64,6 +64,20 @@ def test_long_recall_kernels_batch_full_attention_evaluation():
         assert '"8" if model in {"transformer", "rlt"}' in driver
 
 
+def test_long_recall_transformer_gpu_exception_is_explicit():
+    common = (ROOT / "kaggle" / "recall-length-split" / "scar_train_common.py").read_text()
+    assert 'device: str = "cpu"' in common
+    assert '"cuda"' in common and '"--device", device' in common
+    for seed in range(5):
+        folder = ROOT / f"kaggle/recall-length-transformer-gpu-seed{seed}"
+        metadata = (folder / "kernel-metadata.json").read_text()
+        driver = (folder / "scar_train.py").read_text()
+        assert '"enable_gpu": true' in metadata
+        assert 'run_model("transformer"' in driver and '"cuda"' in driver
+    collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
+    assert "scar-v3-recall-length-transformer-gpu-seed0:recall_length:1:35" in collector
+
+
 def test_collector_filters_kaggle_bundle_to_published_family_outputs():
     collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
     assert '*/study2-results/$family/v3*.json' in collector

@@ -1,8 +1,10 @@
 # SCAR reproducibility guide
 
 SCAR separates the immutable corrected Study 1 release from the preregistered
-Study 2 follow-up. Every substantive optimizer step runs in Kaggle CPU
-kernels; local commands below validate, aggregate, visualize, and compile only.
+Study 2 follow-up. Every substantive optimizer step runs in Kaggle kernels;
+CPU is the default, with the explicitly documented Study 2A full-attention
+Transformer long-context endpoint using Kaggle GPU. Local commands below
+validate, aggregate, visualize, and compile only.
 
 ## Environment
 

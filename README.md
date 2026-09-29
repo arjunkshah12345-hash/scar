@@ -63,9 +63,11 @@ cd paper && tectonic paper.tex
 The dedicated cost benchmark is also cloud-only; `data/cost_bench.json` is
 pulled from the `cc` Kaggle kernel by `kaggle/collect.sh`.
 
-Training runs on Kaggle CPU (`kaggle/`, one kernel per task-density config plus
-a cost-benchmark kernel) — tiny sequential models are ~13x faster on CPU than
-GPU. Code + results live here.
+Training runs on Kaggle (`kaggle/`, one kernel per study slice plus a
+cost-benchmark kernel). CPU is the default; the Study 2A full-attention
+Transformer long-context endpoint uses the explicitly preregistered Kaggle
+GPU exception because its 4,096-token causal attention is quadratic. Code,
+device provenance, and compact results live here.
 
 ## Study 2 protocol (research/v3)
 

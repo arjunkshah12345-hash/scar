@@ -69,6 +69,12 @@ hypothesis is falsified.
 * Every Kaggle driver clones the exact public commit named in its metadata.
 * Kaggle CPU is the default. GPU is allowed only when a protocol entry names it
   explicitly and records the hardware.
+* Study 2A's full causal Transformer endpoint is the explicit GPU exception:
+  the 4,096-operation evaluation over 4,096 examples is quadratic in sequence
+  length and is run on a Kaggle GPU for feasibility. The task, examples,
+  seeds, optimizer steps, model, and evaluation contexts are unchanged; the
+  recorded environment must identify the accelerator. All other Study 2A
+  models remain on Kaggle CPU.
 * Training uses AdamW, learning rate 3e-3, weight decay 0.01, 200-step linear
   warmup, cosine decay to 0.1×, gradient norm clipping at 1.0, and batch size
   64 unless a study entry states otherwise.
@@ -145,6 +151,10 @@ against evaluation/training-length ratio.
 
 This study tests the existing 512-operation result farther out. It does not
 declare success merely because SCAR reaches 512.
+
+The full-attention Transformer in this family uses the GPU exception in
+Section 3.1 for the long-context endpoint; CPU remains the default for the
+recurrent, SCAR, and RLT runs.
 
 ## 5. Preregistered Study 2B — train/test ratio
 
