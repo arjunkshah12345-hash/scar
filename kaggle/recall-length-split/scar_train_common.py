@@ -56,7 +56,12 @@ def run_model(model: str, selected_seeds=None) -> None:
             "--model", model, "--task", "recall", "--density", "sparse",
             "--seed", str(seed), "--steps", "2500", "--train_ops", "64",
             "--eval_lengths", EVAL_LENGTHS, "--eval_examples", "4096",
-            "--eval_batch", "8" if model in {"transformer", "rlt"} else "256",
+            # Full-attention Transformer evaluation remains memory-bound at the
+            # 4,096-operation endpoint, while RLT's recurrent evaluator is
+            # memory-light but compute-heavy.  Keep the Transformer batch
+            # conservative and use a larger RLT batch to finish the same
+            # 4,096 fresh examples within Kaggle's CPU session limit.
+            "--eval_batch", "32" if model == "rlt" else ("8" if model == "transformer" else "256"),
             "--device", "cpu", "--study", "study2", "--protocol_version", "v3.0",
             "--experiment_id", experiment_id, "--out", str(out),
         ]
