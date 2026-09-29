@@ -18,7 +18,8 @@ def run(cmd, **kwargs):
     return subprocess.run(cmd, check=True, **kwargs)
 
 
-def run_model(model: str) -> None:
+def run_model(model: str, selected_seeds=None) -> None:
+    seeds = list(SEEDS if selected_seeds is None else selected_seeds)
     if not WORK.exists():
         run(["git", "clone", "--depth", "1", "--branch", REF, "--single-branch", REPO, str(WORK)])
     os.chdir(WORK)
@@ -38,15 +39,15 @@ def run_model(model: str) -> None:
         "experiment_family": "v3A_recall_length",
         "git_commit": commit,
         "models": [model],
-        "seeds": list(SEEDS),
+        "seeds": seeds,
         "train_ops": 64,
         "eval_lengths": [int(x) for x in EVAL_LENGTHS.split(",")],
         "eval_examples": 4096,
-        "expected_count": EXPECTED,
+        "expected_count": len(seeds),
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
-    for seed in SEEDS:
+    for seed in seeds:
         experiment_id = f"v3A_recall_train64_{model}_seed{seed}"
         artifact = out / f"{experiment_id}.json"
         log_path = log_dir / f"{experiment_id}.log"
@@ -67,7 +68,7 @@ def run_model(model: str) -> None:
         if not artifact.exists():
             raise SystemExit(f"missing artifact: {artifact}")
 
-    run([sys.executable, "-m", "study2.validate", str(out), "--expected-count", str(EXPECTED)])
+    run([sys.executable, "-m", "study2.validate", str(out), "--expected-count", str(len(seeds))])
     shutil.copytree(out, "/kaggle/working/study2-results/recall_length", dirs_exist_ok=True)
     shutil.copytree(log_dir, "/kaggle/working/study2-logs/recall_length", dirs_exist_ok=True)
     print(f"Study 2A split complete: {EXPECTED} {model} artifacts", flush=True)
