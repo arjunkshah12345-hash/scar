@@ -107,11 +107,14 @@ collect_one() {
   if [[ "$family" == "mechanism" ]]; then
     selected_count="$(find "$tmp" -type f \( \
       -path "*/study2-results/slot_sweep/v3*.json" -o \
-      -path "*/study2-results/decay_sweep/v3*.json" \
+      -path "*/study2-results/decay_sweep/v3*.json" -o \
+      -path "*/study2_results/slot_sweep/v3*.json" -o \
+      -path "*/study2_results/decay_sweep/v3*.json" \
     \) | wc -l | tr -d ' ')"
   else
     selected_count="$(find "$tmp" -type f \
-      -path "*/study2-results/$family/v3*.json" | wc -l | tr -d ' ')"
+      \( -path "*/study2-results/$family/v3*.json" -o \
+         -path "*/study2_results/$family/v3*.json" \) | wc -l | tr -d ' ')"
   fi
   if [[ "$status" == *COMPLETE* && "$selected_count" != "$expected" ]]; then
     echo "$family: COMPLETE kernel returned $selected_count/$expected family artifacts" >&2
@@ -127,13 +130,16 @@ collect_one() {
     # bundle; never copy the repository checkout or unrelated family files.
     find "$tmp" -type f \( \
       -path "*/study2-results/slot_sweep/v3*.json" -o \
-      -path "*/study2-results/decay_sweep/v3*.json" \
+      -path "*/study2-results/decay_sweep/v3*.json" -o \
+      -path "*/study2_results/slot_sweep/v3*.json" -o \
+      -path "*/study2_results/decay_sweep/v3*.json" \
     \) -exec cp {} "$dest"/ \;
   else
     # Kaggle packages the complete /kaggle/working tree. Select only the
     # published output directory, not committed JSONs from the checkout.
     find "$tmp" -type f \
-      -path "*/study2-results/$family/v3*.json" \
+      \( -path "*/study2-results/$family/v3*.json" -o \
+         -path "*/study2_results/$family/v3*.json" \) \
       -exec cp {} "$dest"/ \;
   fi
   if [[ "$split" -eq 0 ]]; then

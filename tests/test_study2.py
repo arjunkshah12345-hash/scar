@@ -82,6 +82,7 @@ def test_long_recall_transformer_gpu_exception_is_explicit():
 def test_collector_filters_kaggle_bundle_to_published_family_outputs():
     collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
     assert '*/study2-results/$family/v3*.json' in collector
+    assert '*/study2_results/$family/v3*.json' in collector
     assert '*/study2-results/slot_sweep/v3*.json' in collector
     assert '*/study2-results/decay_sweep/v3*.json' in collector
     assert 'find "$dest" -maxdepth 1 -type f -name \'v3*.json\' -delete' in collector
