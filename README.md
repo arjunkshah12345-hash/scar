@@ -66,8 +66,9 @@ pulled from the `cc` Kaggle kernel by `kaggle/collect.sh`.
 Training runs on Kaggle (`kaggle/`, one kernel per study slice plus a
 cost-benchmark kernel). CPU is the default; the Study 2A full-attention
 Transformer long-context endpoint uses the explicitly preregistered Kaggle
-GPU exception because its 4,096-token causal attention is quadratic. Code,
-device provenance, and compact results live here.
+accelerator exception because its 4,096-token causal attention is quadratic;
+Kaggle CPU is the recorded fallback when the weekly GPU quota is exhausted.
+Code, device provenance, and compact results live here.
 
 ## Study 2 protocol (research/v3)
 

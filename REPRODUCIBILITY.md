@@ -3,8 +3,9 @@
 SCAR separates the immutable corrected Study 1 release from the preregistered
 Study 2 follow-up. Every substantive optimizer step runs in Kaggle kernels;
 CPU is the default, with the explicitly documented Study 2A full-attention
-Transformer long-context endpoint using Kaggle GPU. Local commands below
-validate, aggregate, visualize, and compile only.
+Transformer long-context endpoint using the Kaggle accelerator exception
+(GPU when quota is available, CPU fallback otherwise). Local commands below
+validate, aggregate, and compile only.
 
 ## Environment
 

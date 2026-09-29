@@ -65,7 +65,7 @@ def run_model(model: str, selected_seeds=None, device: str = "cpu") -> None:
             "--eval_batch", (
                 "32" if model == "rlt" else
                 ("4" if device == "cuda" and model == "transformer" else
-                 ("8" if model == "transformer" else "256"))
+                 ("16" if model == "transformer" else "256"))
             ),
             "--device", device, "--study", "study2", "--protocol_version", "v3.0",
             "--experiment_id", experiment_id, "--out", str(out),
