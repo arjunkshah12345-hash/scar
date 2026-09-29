@@ -103,18 +103,35 @@ collect_one() {
     return 0
   fi
   kaggle kernels output "aks1321/$kernel" -p "$tmp" --force >/dev/null 2>&1 || true
-  local selected_count
+  local layout hyphen_count selected_count
   if [[ "$family" == "mechanism" ]]; then
+    hyphen_count="$(find "$tmp" -type f \( \
+      -path "*/study2-results/slot_sweep/v3*.json" -o \
+      -path "*/study2-results/decay_sweep/v3*.json" \
+    \) | wc -l | tr -d ' ')"
+  else
+    hyphen_count="$(find "$tmp" -type f \
+      -path "*/study2-results/$family/v3*.json" | wc -l | tr -d ' ')"
+  fi
+  if [[ "$hyphen_count" -gt 0 ]]; then
+    layout="hyphen"
+  else
+    layout="underscore"
+  fi
+  if [[ "$family" == "mechanism" && "$layout" == "hyphen" ]]; then
     selected_count="$(find "$tmp" -type f \( \
       -path "*/study2-results/slot_sweep/v3*.json" -o \
-      -path "*/study2-results/decay_sweep/v3*.json" -o \
+      -path "*/study2-results/decay_sweep/v3*.json" \
+    \) | wc -l | tr -d ' ')"
+  elif [[ "$family" == "mechanism" ]]; then
+    selected_count="$(find "$tmp" -type f \( \
       -path "*/study2_results/slot_sweep/v3*.json" -o \
       -path "*/study2_results/decay_sweep/v3*.json" \
     \) | wc -l | tr -d ' ')"
+  elif [[ "$layout" == "hyphen" ]]; then
+    selected_count="$(find "$tmp" -type f -path "*/study2-results/$family/v3*.json" | wc -l | tr -d ' ')"
   else
-    selected_count="$(find "$tmp" -type f \
-      \( -path "*/study2-results/$family/v3*.json" -o \
-         -path "*/study2_results/$family/v3*.json" \) | wc -l | tr -d ' ')"
+    selected_count="$(find "$tmp" -type f -path "*/study2_results/$family/v3*.json" | wc -l | tr -d ' ')"
   fi
   if [[ "$status" == *COMPLETE* && "$selected_count" != "$expected" ]]; then
     echo "$family: COMPLETE kernel returned $selected_count/$expected family artifacts" >&2
@@ -125,33 +142,38 @@ collect_one() {
     # collection attempt.
     find "$dest" -maxdepth 1 -type f -name 'v3*.json' -delete
   fi
-  if [[ "$family" == "mechanism" ]]; then
+  if [[ "$family" == "mechanism" && "$layout" == "hyphen" ]]; then
     # The mechanism driver exposes two output subfamilies in the Kaggle
     # bundle; never copy the repository checkout or unrelated family files.
     find "$tmp" -type f \( \
       -path "*/study2-results/slot_sweep/v3*.json" -o \
-      -path "*/study2-results/decay_sweep/v3*.json" -o \
+      -path "*/study2-results/decay_sweep/v3*.json" \
+    \) -exec cp {} "$dest"/ \;
+  elif [[ "$family" == "mechanism" ]]; then
+    find "$tmp" -type f \( \
       -path "*/study2_results/slot_sweep/v3*.json" -o \
       -path "*/study2_results/decay_sweep/v3*.json" \
     \) -exec cp {} "$dest"/ \;
-  else
+  elif [[ "$layout" == "hyphen" ]]; then
     # Kaggle packages the complete /kaggle/working tree. Select only the
     # published output directory, not committed JSONs from the checkout.
-    find "$tmp" -type f \
-      \( -path "*/study2-results/$family/v3*.json" -o \
-         -path "*/study2_results/$family/v3*.json" \) \
+    find "$tmp" -type f -path "*/study2-results/$family/v3*.json" \
+      -exec cp {} "$dest"/ \;
+  else
+    find "$tmp" -type f -path "*/study2_results/$family/v3*.json" \
       -exec cp {} "$dest"/ \;
   fi
   if [[ "$split" -eq 0 ]]; then
     local manifest
-    manifest="$(find "$tmp" -type f -path "*/study2-results/$family/manifest.json" | head -n 1)"
-    if [[ -z "$manifest" ]]; then
+    if [[ "$layout" == "hyphen" ]]; then
+      manifest="$(find "$tmp" -type f -path "*/study2-results/$family/manifest.json" | head -n 1)"
+    else
       # Mechanism's combined family manifest was created in the cloned
       # checkout by older driver versions; it is still acceptable provenance
       # when the artifact paths above came from the published output bundle.
       manifest="$(find "$tmp" -type f -path "*/study2_results/$family/manifest.json" | head -n 1)"
     fi
-    if [[ -z "$manifest" && "$family" == "mechanism" ]]; then
+    if [[ -z "$manifest" && "$family" == "mechanism" && "$layout" == "underscore" ]]; then
       manifest="$(find "$tmp" -type f \( \
         -path "*/study2_results/slot_sweep/manifest.json" -o \
         -path "*/study2_results/decay_sweep/manifest.json" \
