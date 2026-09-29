@@ -75,7 +75,8 @@ def test_long_recall_transformer_gpu_exception_is_explicit():
         assert '"enable_gpu": true' in metadata
         assert 'run_model("transformer"' in driver and '"cuda"' in driver
     collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
-    assert "scar-v3-recall-length-transformer-gpu-seed0:recall_length:1:35" in collector
+    assert "scar-v3-recall-length-transformer-cpu-seed0:recall_length:1:35" in collector
+    assert "scar-v3-recall-length-transformer-gpu-seed0" not in collector
 
 
 def test_collector_filters_kaggle_bundle_to_published_family_outputs():
