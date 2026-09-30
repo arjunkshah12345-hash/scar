@@ -1,0 +1,394 @@
+"""Static checks for the cloud-only Study 2 infrastructure."""
+from pathlib import Path
+
+from study2.validate import validate_artifact
+from study2.analyze import (
+    aggregate_interventions,
+    aggregate_memory_diagnostics,
+    bootstrap_ci,
+    family_name,
+)
+from study2.state_memory import persistent_state_bytes
+from study2.selective_copy import BOS, MARK, SLOT, make_batch
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_protocol_is_frozen_before_results():
+    text = (ROOT / "EXPERIMENT_PROTOCOL_V3.md").read_text()
+    assert "Status: frozen before Study 2 result collection" in text
+    assert "Study 1: immutable corrected baseline" in text
+    assert "Study 2A" in text and "Study 2E" in text
+    assert "All optimizer steps and timing involving training run in Kaggle kernels." in text
+
+
+def test_recall_length_kernel_is_cloud_only_and_provenance_aware():
+    driver = (ROOT / "kaggle" / "recall-length" / "scar_train.py").read_text()
+    assert "--branch" in driver and "research/v3" in driver
+    assert "--protocol_version" in driver
+    assert "--experiment_id" in driver
+    assert "study2.validate" in driver
+    assert "/kaggle/working" in driver
+
+
+def test_associative_recall_kernel_is_separate_from_study1():
+    metadata = ROOT / "kaggle" / "associative-recall" / "kernel-metadata.json"
+    driver = ROOT / "kaggle" / "associative-recall" / "scar_train.py"
+    assert metadata.exists() and driver.exists()
+    source = driver.read_text()
+    assert "--task" in source and '"assoc"' in source
+    assert "v3C_assoc_train4" in source
+    assert "study2_results" in source
+
+
+def test_ratio_kernels_have_distinct_experiment_families():
+    for name, train_ops in (("ratio32", "train32"), ("ratio128", "train128")):
+        driver = (ROOT / "kaggle" / name / "scar_train.py").read_text()
+        assert "study2.validate" in driver
+        assert f"v3B_recall_{train_ops}" in driver
+
+
+def test_retryable_kernels_clear_stale_output_before_exact_count_validation():
+    for name in ("associative-recall", "ratio32"):
+        driver = (ROOT / "kaggle" / name / "scar_train.py").read_text()
+        assert "if OUT.exists():" in driver
+        assert "shutil.rmtree(OUT)" in driver
+
+
+def test_long_recall_kernels_batch_full_attention_evaluation():
+    for name in ("recall-length", "ratio128"):
+        driver = (ROOT / "kaggle" / name / "scar_train.py").read_text()
+        assert "if OUT.exists():" in driver
+        assert "shutil.rmtree(OUT)" in driver
+        assert '"8" if model in {"transformer", "rlt"}' in driver
+
+
+def test_long_recall_transformer_gpu_exception_is_explicit():
+    common = (ROOT / "kaggle" / "recall-length-split" / "scar_train_common.py").read_text()
+    assert 'device: str = "cpu"' in common
+    assert '"cuda"' in common and '"--device", device' in common
+    for seed in range(5):
+        folder = ROOT / f"kaggle/recall-length-transformer-gpu-seed{seed}"
+        metadata = (folder / "kernel-metadata.json").read_text()
+        driver = (folder / "scar_train.py").read_text()
+        assert '"enable_gpu": true' in metadata
+        assert 'run_model("transformer"' in driver and '"cuda"' in driver
+    collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
+    assert "scar-v3-recall-length-transformer-cpu-seed0:recall_length:1:35" in collector
+    assert "scar-v3-recall-length-transformer-gpu-seed0" not in collector
+
+
+def test_collector_filters_kaggle_bundle_to_published_family_outputs():
+    collector = (ROOT / "kaggle" / "collect_study2.sh").read_text()
+    assert '*/study2-results/$family/v3*.json' in collector
+    assert '*/study2_results/$family/v3*.json' in collector
+    assert '*/study2-results/slot_sweep/v3*.json' in collector
+    assert '*/study2-results/decay_sweep/v3*.json' in collector
+    assert 'find "$dest" -maxdepth 1 -type f -name \'v3*.json\' -delete' in collector
+    assert 'scar-v3-collected-${kernel//\\//-}-$$' in collector
+    assert 'scar-v3-recall-length-gru:recall_length:5:35' in collector
+    assert 'scar-v3-recall-length-scar-norecall:recall_length:5:35' in collector
+
+
+def test_mechanism_kernel_covers_slots_and_decay_modes():
+    driver = (ROOT / "kaggle" / "mechanism" / "scar_train.py").read_text()
+    assert "--scar_k" in driver and "--scar_decay_mode" in driver
+    assert "slot_sweep" in driver and "decay_sweep" in driver
+    assert 'experiment_family": "v3E_mechanism"' in driver
+    assert 'root / "mechanism" / "manifest.json"' in driver
+    assert "study2.validate" in driver
+
+
+def test_intervention_kernel_requests_frozen_memory_perturbations():
+    driver = (ROOT / "kaggle" / "intervention" / "scar_train.py").read_text()
+    assert "--interventions" in driver
+    for name in ("fastest", "slowest", "equalize", "shuffle", "noise"):
+        assert name in driver
+
+
+def test_study2_validator_accepts_complete_shape():
+    row = {
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_id": "v3A_demo_gru_seed0", "git_commit": "abc",
+        "model": "gru", "variant": "gru", "seed": 0, "task": "recall",
+        "task_parameters": {}, "train_context": 64, "eval_contexts": [64],
+        "eval_examples": 4, "params": 100, "optimizer": {"name": "AdamW"},
+        "lr": 0.003, "weight_decay": 0.01, "warmup_steps": 200,
+        "batch_size": 64, "steps": 10, "training_examples": 640,
+        "training_tokens": 40960, "supervision": "recall_sparse",
+        "curriculum": False, "metrics": {"accuracy_pct": {"64": 50.0}},
+        "raw_metrics": {}, "train_seconds": 1.0, "train_ms_per_step": 1.0,
+        "inference_ms_per_example": {"64": 1.0},
+        "env": {
+            "torch": "x", "numpy": "x", "python": "x", "platform": "x",
+            "device": "cpu", "cpu": "x", "gpu": None, "torch_threads": 2,
+            "git_commit": "abc", "timestamp_utc": "x",
+        },
+    }
+    validate_artifact(row)
+
+
+def test_study2_validator_excludes_provenance_manifest(tmp_path):
+    import json
+
+    row = {
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_id": "v3A_demo_gru_seed0", "git_commit": "abc",
+        "model": "gru", "variant": "gru", "seed": 0, "task": "recall",
+        "task_parameters": {}, "train_context": 64, "eval_contexts": [64],
+        "eval_examples": 4, "params": 100, "optimizer": {"name": "AdamW"},
+        "lr": 0.003, "weight_decay": 0.01, "warmup_steps": 200,
+        "batch_size": 64, "steps": 10, "training_examples": 640,
+        "training_tokens": 40960, "supervision": "recall_sparse",
+        "curriculum": False, "metrics": {"accuracy_pct": {"64": 50.0}},
+        "raw_metrics": {}, "train_seconds": 1.0, "train_ms_per_step": 1.0,
+        "inference_ms_per_example": {"64": 1.0},
+        "env": {
+            "torch": "x", "numpy": "x", "python": "x", "platform": "x",
+            "device": "cpu", "cpu": "x", "gpu": None, "torch_threads": 2,
+            "git_commit": "abc", "timestamp_utc": "x",
+        },
+    }
+    (tmp_path / "v3A_demo_gru_seed0.json").write_text(json.dumps(row))
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_family": "v3A_demo", "git_commit": "a" * 40,
+    }))
+    row["git_commit"] = "a" * 40
+    row["env"]["git_commit"] = "a" * 40
+    (tmp_path / "v3A_demo_gru_seed0.json").write_text(json.dumps(row))
+    from study2.validate import validate_directory
+
+    assert len(validate_directory(tmp_path, expected_count=1)) == 1
+
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_family": "v3A_demo", "git_commit": "b" * 40,
+    }))
+    try:
+        validate_directory(tmp_path, expected_count=1)
+    except ValueError as exc:
+        assert "does not match manifest" in str(exc)
+    else:
+        raise AssertionError("manifest commit mismatch was accepted")
+
+
+def test_bootstrap_summary_is_deterministic_and_bounded():
+    import numpy as np
+
+    first = bootstrap_ci([100.0, 50.0, 0.0], np.random.default_rng(4), draws=1000)
+    second = bootstrap_ci([100.0, 50.0, 0.0], np.random.default_rng(4), draws=1000)
+    assert first == second
+    assert 0.0 <= first[0] <= first[1] <= 100.0
+
+
+def test_analysis_preserves_intervention_metrics():
+    rows = [{
+        "_family": "intervention",
+        "model": "scar",
+        "seed": 0,
+        "interventions": {
+            "fastest": {"64": 80.0, "512": 40.0},
+            "shuffle": {"64": 70.0, "512": 30.0},
+        },
+    }, {
+        "_family": "intervention",
+        "model": "scar",
+        "seed": 1,
+        "interventions": {
+            "fastest": {"64": 90.0, "512": 50.0},
+            "shuffle": {"64": 60.0, "512": 20.0},
+        },
+    }]
+    summary = aggregate_interventions(rows)
+    assert summary["intervention"]["scar"]["fastest"]["512"]["mean"] == 45.0
+    assert summary["intervention"]["scar"]["shuffle"]["64"]["n_seeds"] == 2
+
+
+def test_analysis_preserves_memory_timescale_diagnostics():
+    rows = [{
+        "_family": "mechanism_decay_learned_multi",
+        "model": "scar",
+        "seed": 0,
+        "memory_analysis": {
+            "initial_decay": [0.9, 0.99], "final_decay": [0.91, 0.98],
+            "initial_half_life": [6.6, 69.0], "final_half_life": [7.3, 34.3],
+            "slot_norm_mean": [1.0, 2.0], "read_attention_mean": [0.4, 0.6],
+            "attention_entropy_mean": 0.5, "slot_correlation_abs_mean": 0.2,
+        },
+    }, {
+        "_family": "mechanism_decay_learned_multi",
+        "model": "scar",
+        "seed": 1,
+        "memory_analysis": {
+            "initial_decay": [0.9, 0.99], "final_decay": [0.92, 0.97],
+            "initial_half_life": [6.6, 69.0], "final_half_life": [8.3, 22.8],
+            "slot_norm_mean": [1.2, 1.8], "read_attention_mean": [0.5, 0.5],
+            "attention_entropy_mean": 0.7, "slot_correlation_abs_mean": 0.4,
+        },
+    }]
+    summary = aggregate_memory_diagnostics(rows)
+    result = summary["mechanism_decay_learned_multi"]["scar"]
+    assert result["final_decay"]["0"]["n_seeds"] == 2
+    assert result["attention_entropy_mean"]["scalar"]["mean"] == 0.6
+
+
+def test_intervention_validator_requires_all_frozen_perturbations(tmp_path):
+    import json
+
+    row = {
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_id": "v3E_intervention_scar_seed0", "git_commit": "abc",
+        "model": "scar", "variant": "scar", "seed": 0, "task": "recall",
+        "task_parameters": {}, "train_context": 64, "eval_contexts": [64],
+        "eval_examples": 4, "params": 100, "optimizer": {"name": "AdamW"},
+        "lr": 0.003, "weight_decay": 0.01, "warmup_steps": 200,
+        "batch_size": 64, "steps": 10, "training_examples": 640,
+        "training_tokens": 40960, "supervision": "recall_sparse",
+        "curriculum": False, "metrics": {"accuracy_pct": {"64": 50.0}},
+        "interventions": {name: {"64": 50.0} for name in
+                           ("fastest", "slowest", "equalize", "shuffle", "noise")},
+        "raw_metrics": {}, "train_seconds": 1.0, "train_ms_per_step": 1.0,
+        "inference_ms_per_example": {"64": 1.0},
+        "env": {
+            "torch": "x", "numpy": "x", "python": "x", "platform": "x",
+            "device": "cpu", "cpu": "x", "gpu": None, "torch_threads": 2,
+            "git_commit": "abc", "timestamp_utc": "x",
+        },
+    }
+    path = tmp_path / "intervention"
+    path.mkdir()
+    (path / "v3E_intervention_scar_seed0.json").write_text(json.dumps(row))
+    (path / "manifest.json").write_text(json.dumps({
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_family": "v3E_intervention", "git_commit": "a" * 40,
+        "models": ["scar"], "seeds": [0], "expected_count": 1,
+    }))
+    row["git_commit"] = "a" * 40
+    row["env"]["git_commit"] = "a" * 40
+    (path / "v3E_intervention_scar_seed0.json").write_text(json.dumps(row))
+    from study2.validate import validate_directory
+
+    assert len(validate_directory(path, expected_count=1)) == 1
+    row["interventions"].pop("noise")
+    (path / "v3E_intervention_scar_seed0.json").write_text(json.dumps(row))
+    try:
+        validate_directory(path, expected_count=1)
+    except ValueError as exc:
+        assert "intervention artifact" in str(exc)
+    else:
+        raise AssertionError("incomplete intervention artifact was accepted")
+
+
+def test_analysis_keeps_mechanism_and_entropy_conditions_separate(tmp_path):
+    selective = {
+        "task": "selective_copy",
+        "task_parameters": {"distractor_vocab": 2},
+    }
+    slot = {
+        "task": "recall",
+        "experiment_id": "v3E_slot16_seed0",
+        "task_parameters": {"scar_k": 16, "scar_decay_mode": "learned_multi"},
+    }
+    decay = {
+        "task": "recall",
+        "experiment_id": "v3E_decay_learned_multi_seed0",
+        "task_parameters": {"scar_k": 16, "scar_decay_mode": "learned_multi"},
+    }
+    assert family_name(selective, tmp_path / "selective_copy" / "x.json") == "selective_copy_entropy2"
+    assert family_name(slot, tmp_path / "mechanism" / "x.json") == "mechanism_slots16"
+    assert family_name(decay, tmp_path / "mechanism" / "x.json") == "mechanism_decay_learned_multi"
+
+
+def test_persistent_state_scaling_matches_architecture_claim():
+    assert persistent_state_bytes("scar", 64) == persistent_state_bytes("scar", 4096)
+    assert persistent_state_bytes("gru", 64) == persistent_state_bytes("gru", 4096)
+    assert persistent_state_bytes("transformer", 4096) > persistent_state_bytes("transformer", 64)
+    assert persistent_state_bytes("rlt", 4096) > persistent_state_bytes("rlt", 64)
+
+
+def test_scar_memory_diagnostics_are_post_training_only():
+    import torch
+    from bench import SCAR
+
+    model = SCAR(vocab=5, k=4)
+    diagnostics = model.memory_diagnostics(torch.zeros(3, 7, dtype=torch.long))
+    assert len(diagnostics["slot_norm_mean"]) == 4
+    assert len(diagnostics["read_attention_mean"]) == 4
+    assert diagnostics["attention_entropy_mean"] >= 0.0
+    assert 0.0 <= diagnostics["slot_correlation_abs_mean"] <= 1.0
+
+
+def test_selective_copy_batch_marks_ordered_targets_and_slots():
+    import numpy as np
+
+    seq, targets, slots = make_batch(
+        total_items=12,
+        marked_items=4,
+        batch_size=5,
+        rng=np.random.default_rng(7),
+    )
+    assert seq.shape == (5, 12 * 2 + 1 + 2 * 4)
+    assert targets.shape == (5, 4)
+    assert slots.tolist() == [26, 28, 30, 32]
+    assert BOS != SLOT
+    for row, expected in zip(seq, targets):
+        marked_positions = (row[:24:2] == MARK).nonzero().flatten()
+        assert len(marked_positions) == 4
+        assert row[24] != MARK
+        assert row[slots - 1].tolist() == [SLOT] * 4
+        assert row[2 * marked_positions + 1].tolist() == expected.tolist()
+
+
+def test_selective_copy_kernel_is_cloud_only_and_multi_output():
+    metadata = ROOT / "kaggle" / "selective-copy" / "kernel-metadata.json"
+    driver = ROOT / "kaggle" / "selective-copy" / "scar_train.py"
+    assert metadata.exists() and driver.exists()
+    source = driver.read_text()
+    assert "v3D_copy_items64_entropy" in source
+    assert "CONDITIONS = [(\"high\", 16), (\"low\", 2)]" in source
+    assert "study2.selective_copy" in source
+    module = (ROOT / "study2" / "selective_copy.py").read_text()
+    assert "free_running_exact_sequence_pct" in module
+    assert "Refusing local training" in module
+
+
+def test_study2_directory_requires_manifest_and_consistent_context(tmp_path):
+    import json
+
+    row = {
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_id": "v3A_demo_gru_seed0", "git_commit": "a" * 40,
+        "model": "gru", "variant": "gru", "seed": 0, "task": "recall",
+        "task_parameters": {}, "train_context": 64, "eval_contexts": [64],
+        "eval_examples": 4, "params": 100, "optimizer": {"name": "AdamW"},
+        "lr": 0.003, "weight_decay": 0.01, "warmup_steps": 200,
+        "batch_size": 64, "steps": 10, "training_examples": 640,
+        "training_tokens": 40960, "supervision": "recall_sparse",
+        "curriculum": False, "metrics": {"accuracy_pct": {"64": 50.0}},
+        "raw_metrics": {}, "train_seconds": 1.0, "train_ms_per_step": 1.0,
+        "inference_ms_per_example": {"64": 1.0},
+        "env": {
+            "torch": "x", "numpy": "x", "python": "x", "platform": "x",
+            "device": "cpu", "cpu": "x", "gpu": None, "torch_threads": 2,
+            "git_commit": "a" * 40, "timestamp_utc": "x",
+        },
+    }
+    artifact = tmp_path / "v3A_demo_gru_seed0.json"
+    artifact.write_text(json.dumps(row))
+    from study2.validate import validate_directory
+
+    try:
+        validate_directory(tmp_path, expected_count=1)
+    except ValueError as exc:
+        assert "manifest" in str(exc)
+    else:
+        raise AssertionError("directory without a manifest was accepted")
+
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "study": "study2", "protocol_version": "v3.0",
+        "experiment_family": "v3A_demo", "git_commit": "a" * 40,
+        "models": ["gru"], "seeds": [0], "expected_count": 1,
+    }))
+    assert len(validate_directory(tmp_path, expected_count=1)) == 1

@@ -63,9 +63,66 @@ cd paper && tectonic paper.tex
 The dedicated cost benchmark is also cloud-only; `data/cost_bench.json` is
 pulled from the `cc` Kaggle kernel by `kaggle/collect.sh`.
 
-Training runs on Kaggle CPU (`kaggle/`, one kernel per task-density config plus
-a cost-benchmark kernel) — tiny sequential models are ~13x faster on CPU than
-GPU. Code + results live here.
+Training runs on Kaggle (`kaggle/`, one kernel per study slice plus a
+cost-benchmark kernel). CPU is the default; the Study 2A full-attention
+Transformer long-context endpoint uses the explicitly preregistered Kaggle
+accelerator exception because its 4,096-token causal attention is quadratic;
+Kaggle CPU is the recorded fallback when the weekly GPU quota is exhausted.
+Code, device provenance, and compact results live here.
+
+## Study 2 protocol (research/v3)
+
+The follow-up study is preregistered in
+[`EXPERIMENT_PROTOCOL_V3.md`](EXPERIMENT_PROTOCOL_V3.md). It keeps the v2
+release immutable and adds cloud-only probes for delayed recall, train/test
+length ratios, associative key/value recall, selective copy with capacity and
+distractor-entropy conditions, memory-slot mechanisms, and frozen-memory
+interventions. Every Study 2 driver clones the exact `research/v3` commit and
+writes provenance-rich JSON under `study2_results/`; no optimizer step is
+allowed on the local machine.
+
+The primary Study 2 release gate is the seven-family, 172-run matrix: recall
+length (35), ratio32 (18), ratio128 (18), associative recall (21), selective
+copy (42), mechanism (33), and intervention (5). The supervision/curriculum
+comparison and language-modeling extension described as exploratory follow-ups
+in the protocol are deliberately outside this primary release: no language
+model result is claimed, and the existing curriculum archive remains separate
+from the fixed-density Study 1 tables.
+
+The completed release supports a specific, bounded conclusion. After training
+at 64 operations, SCAR reaches 72.8% +/- 13.8% at 4,096-operation delayed
+recall, versus 13.4% +/- 0.6% for the carrier-only ablation and 12.5% +/- 0.4%
+for the no-recall ablation; RLT remains stronger at 97.4% +/- 5.7% in this
+probe. At a 32x train/test ratio SCAR stays at 100% through 512 operations,
+whereas the 128-operation context does not transfer to the 2,048-operation
+endpoint. Associative recall reaches only 11.4% at 32 key/value pairs against
+the 6.25% single-choice chance floor, and free-running selective copy reaches
+0% exact-sequence accuracy at 32 items. Mechanism and frozen-memory sweeps are
+descriptive: slot usage is non-monotonic and injected memory noise is the only
+512-operation intervention with a material drop. These results support a
+long-horizon advantage over matched SCAR ablations, not a claim of general
+purpose constant-size storage or universal architecture dominance.
+
+After the Kaggle kernels finish, collect and validate them locally with:
+
+```
+bash kaggle/collect_study2.sh
+python3 -m study2.analyze study2_results --out analysis/study2
+```
+
+Incomplete or failed kernel outputs must not be included in paper tables. The
+paper is regenerated only after the complete artifact families pass validation.
+
+The completed Study 2 release is committed on `research/v3`. The publication
+helper performs the final non-training checks, pushes the branch, and queues
+the PR to `main`:
+
+```
+./scripts/publish_study2_pr.sh
+```
+
+Set `RUN_GITHUB_WORKER=1` if the safety worker should submit the queued PR in
+the same invocation.
 
 ## Results
 `results/` holds the v2 run JSONs; `data/summary.json` the aggregation;

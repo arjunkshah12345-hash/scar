@@ -23,12 +23,13 @@ import torch.nn.functional as F
 
 # ---------------- tasks ----------------
 
-TASK_CHANCE = {"parity": 50.0, "five": 20.0, "recall": 12.5}
-TASK_VOCAB = {"parity": 5, "five": 11, "recall": 10}   # BOS = vocab - 2
+TASK_CHANCE = {"parity": 50.0, "five": 20.0, "recall": 12.5, "assoc": 6.25}
+TASK_VOCAB = {"parity": 5, "five": 11, "recall": 10, "assoc": 50}
 EVAL_LENS = {"parity": (16, 32, 64, 128, 256),
              "five": (16, 32, 64, 128, 256),
-             "recall": (64, 128, 256, 512)}
-DEFAULT_TRAIN_OPS = {"parity": 32, "five": 32, "recall": 64}
+             "recall": (64, 128, 256, 512),
+             "assoc": (1, 2, 4, 8, 16, 32)}
+DEFAULT_TRAIN_OPS = {"parity": 32, "five": 32, "recall": 64, "assoc": 4}
 
 def gen_automaton(rng, n=5):
     # random permutation per transition token => T[s][a] gives next state
@@ -48,6 +49,26 @@ def make_batch(task, ops, bs, rng, auto):
         seq = rng.integers(0, 8, size=(bs, ops))
         ans = seq[:, 0].copy()
         run = np.tile(ans[:, None], (1, ops))      # placeholder; recall is sparse-only
+    elif task == "assoc":
+        # Key/value pairs use disjoint vocabularies. Keys are 0..31, values
+        # are 32..47, token 49 is a query marker, and token 48 is BOS. Each
+        # key occurs once in the pairs and is queried once at the end, so the
+        # answer cannot be recovered from a token-identity shortcut.
+        key_count, value_count = 32, 16
+        if ops < 1 or ops > key_count:
+            raise ValueError("assoc ops must be between 1 and 32 pairs")
+        seq = np.empty((bs, 2 * ops + 2), dtype=np.int64)
+        ans = np.empty(bs, dtype=np.int64)
+        for b in range(bs):
+            keys = rng.choice(key_count, size=ops, replace=False)
+            values = rng.integers(0, value_count, size=ops)
+            query_i = int(rng.integers(0, ops))
+            seq[b, 0:2 * ops:2] = keys
+            seq[b, 1:2 * ops:2] = values + key_count
+            seq[b, 2 * ops] = TASK_VOCAB["assoc"] - 1
+            seq[b, 2 * ops + 1] = keys[query_i]
+            ans[b] = values[query_i] + key_count
+        run = np.tile(ans[:, None], (1, seq.shape[1]))
     else:
         seq = rng.integers(0, 5, size=(bs, ops))
         state = np.zeros(bs, dtype=np.int64)
@@ -304,9 +325,9 @@ class SCAR(nn.Module):
     use_recall=False -> memory is written but never read (ablation).
     """
     def __init__(self, vocab, d=88, k=16, r=40, lam_min=0.90, lam_max=0.999,
-                 use_memory=True, use_recall=True, **kw):
+                 use_memory=True, use_recall=True, decay_mode="learned_multi", **kw):
         super().__init__()
-        self.d, self.k, self.r = d, k, r
+        self.d, self.k, self.r, self.decay_mode = d, k, r, decay_mode
         self.use_memory, self.use_recall = use_memory, use_recall
         self.emb = nn.Embedding(vocab, d)
         self.cell = nn.GRUCell(d, d)
@@ -318,7 +339,16 @@ class SCAR(nn.Module):
             # the desired linspace(lam_min, lam_max). The previous version stored
             # log(lam) here and sigmoid'ed it, which collapsed every slot to ~0.5
             # and destroyed the multi-timescale structure.
-            self.log_lam = nn.Parameter(logit_init(k, lam_min, lam_max))
+            if decay_mode == "learned_multi":
+                self.log_lam = nn.Parameter(logit_init(k, lam_min, lam_max))
+            elif decay_mode == "learned_single":
+                self.log_lam = nn.Parameter(logit_init(1, 0.99, 0.99))
+            elif decay_mode == "fixed_multi":
+                self.register_buffer("fixed_lam", torch.linspace(lam_min, lam_max, k))
+            elif decay_mode == "fixed_single":
+                self.register_buffer("fixed_lam", torch.full((k,), 0.99))
+            else:
+                raise ValueError(f"unknown decay_mode={decay_mode}")
         # attentive recall over the k slots
         if use_recall:
             self.ln_r = nn.LayerNorm(d)
@@ -332,14 +362,66 @@ class SCAR(nn.Module):
     def decay(self):
         """Current per-slot decay rates in (0, 1); slot i decays towards lam_max
         (slowest timescale). Exposed for tests and analysis."""
-        return torch.sigmoid(self.log_lam) if self.use_memory else None
+        if not self.use_memory:
+            return None
+        if self.decay_mode == "learned_multi":
+            return torch.sigmoid(self.log_lam)
+        if self.decay_mode == "learned_single":
+            return torch.sigmoid(self.log_lam).expand(self.k)
+        return self.fixed_lam
 
-    def forward(self, x, targets=None):
+    @torch.no_grad()
+    def memory_diagnostics(self, x):
+        """Summarize slot use on a post-training stream without optimizer work.
+
+        This deliberately mirrors the SCAR update/read equations but returns
+        only aggregate diagnostics. It is used by the Kaggle mechanism sweep;
+        it is not part of training or model selection.
+        """
+        if not self.use_memory:
+            return {}
+        B, T = x.shape
+        h = torch.zeros(B, self.d, device=x.device)
+        mem = torch.zeros(B, self.k, self.d, device=x.device)
+        lam = self.decay().view(1, self.k, 1)
+        slot_norm_sum = torch.zeros(self.k, device=x.device)
+        read_sum = torch.zeros(self.k, device=x.device)
+        entropy_sum = torch.zeros((), device=x.device)
+        for t in range(T):
+            e = self.emb(x[:, t])
+            h = self.cell(e, h)
+            u = torch.sigmoid(self.gw(torch.cat([e, h], dim=-1))) * h
+            mem = lam * mem + (1 - lam) * u.unsqueeze(1)
+            slot_norm_sum += mem.norm(dim=-1).mean(0)
+            if self.use_recall:
+                q = self.wq(self.ln_r(h)).view(B, 1, self.r)
+                att = (q @ self.wk(mem).transpose(1, 2) / math.sqrt(self.r)).softmax(-1)
+                read_sum += att.squeeze(1).mean(0)
+                entropy_sum += (-(att * att.clamp_min(1e-12).log()).sum(-1)).mean()
+        flat = mem.transpose(0, 1).reshape(self.k, -1)
+        normalized = F.normalize(flat, dim=1)
+        corr = normalized @ normalized.transpose(0, 1)
+        if self.k > 1:
+            off_diag = ~torch.eye(self.k, dtype=torch.bool, device=x.device)
+            corr_abs = corr.abs()[off_diag].mean()
+        else:
+            corr_abs = torch.zeros((), device=x.device)
+        return {
+            "slot_norm_mean": (slot_norm_sum / max(T, 1)).cpu().tolist(),
+            "read_attention_mean": (read_sum / max(T, 1)).cpu().tolist(),
+            "attention_entropy_mean": float((entropy_sum / max(T, 1)).cpu()),
+            "slot_correlation_abs_mean": float(corr_abs.cpu()),
+        }
+
+    def forward(self, x, targets=None, intervention=None):
         B, T = x.shape
         h = torch.zeros(B, self.d, device=x.device)
         mem = (torch.zeros(B, self.k, self.d, device=x.device)
                if self.use_memory else None)
-        lam = self.decay().view(1, self.k, 1) if self.use_memory else None
+        lam_values = self.decay() if self.use_memory else None
+        if self.use_memory and intervention and intervention.get("equalize_decay"):
+            lam_values = lam_values.mean().expand(self.k)
+        lam = lam_values.view(1, self.k, 1) if self.use_memory else None
         outs = []
         for t in range(T):
             e = self.emb(x[:, t])
@@ -347,6 +429,18 @@ class SCAR(nn.Module):
             if self.use_memory:
                 u = torch.sigmoid(self.gw(torch.cat([e, h], dim=-1))) * h
                 mem = lam * mem + (1 - lam) * u.unsqueeze(1)      # multi-timescale EMA
+                if intervention:
+                    width = max(1, self.k // 4)
+                    if intervention.get("mask_fastest"):
+                        mem = mem.clone()
+                        mem[:, :width] = 0.0
+                    if intervention.get("mask_slowest"):
+                        mem = mem.clone()
+                        mem[:, -width:] = 0.0
+                    if intervention.get("shuffle_slots"):
+                        mem = mem.flip(1)
+                    if intervention.get("noise_std", 0.0):
+                        mem = mem + torch.randn_like(mem) * float(intervention["noise_std"])
                 read = h
                 if self.use_recall:
                     q = self.wq(self.ln_r(h)).view(B, 1, self.r)
@@ -384,7 +478,7 @@ def logit_init(k, lam_min=0.90, lam_max=0.999):
 def count_params(m):
     return sum(p.numel() for p in m.parameters())
 
-def evaluate(model, eval_sets, device, bos):
+def evaluate(model, eval_sets, device, bos, eval_batch=256, forward_kwargs=None):
     model.eval()
     accs, times = {}, {}
     with torch.no_grad():
@@ -393,9 +487,9 @@ def evaluate(model, eval_sets, device, bos):
             n = seqs.shape[0]
             correct = 0
             t0 = time.perf_counter()
-            for i in range(0, n, 256):
-                xb, ab = seqs[i:i + 256], anss[i:i + 256]
-                pred = model(add_bos(xb, bos))[:, -1].argmax(-1)
+            for i in range(0, n, eval_batch):
+                xb, ab = seqs[i:i + eval_batch], anss[i:i + eval_batch]
+                pred = model(add_bos(xb, bos), **(forward_kwargs or {}))[:, -1].argmax(-1)
                 correct += (pred == ab).sum().item()
             accs[ops] = 100.0 * correct / n
             times[ops] = (time.perf_counter() - t0) / n * 1e3
@@ -410,7 +504,7 @@ def main():
         )
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
-    ap.add_argument("--task", required=True, choices=["parity", "five", "recall"])
+    ap.add_argument("--task", required=True, choices=["parity", "five", "recall", "assoc"])
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--steps", type=int, default=3000)
     ap.add_argument("--batch", type=int, default=64)
@@ -425,13 +519,41 @@ def main():
                          "before the full 32-bit chain; eval protocol unchanged")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", default="results")
+    ap.add_argument("--eval_lengths", default=None,
+                    help="comma-separated evaluation lengths; default uses the Study 1 task lengths")
+    ap.add_argument("--eval_examples", type=int, default=2048)
+    ap.add_argument("--eval_batch", type=int, default=256,
+                    help="evaluation batch size; lower this for long full-attention contexts")
+    ap.add_argument("--study", default="study1")
+    ap.add_argument("--protocol_version", default="study1")
+    ap.add_argument("--experiment_id", default=None,
+                    help="stable artifact ID; when supplied, output uses <experiment_id>.json")
+    ap.add_argument("--scar_k", type=int, default=16,
+                    help="SCAR memory slots for SCAR variants")
+    ap.add_argument("--scar_decay_mode", choices=["learned_multi", "learned_single", "fixed_multi", "fixed_single"],
+                    default="learned_multi")
+    ap.add_argument("--interventions", default="",
+                    help="comma-separated frozen-SCAR interventions: fastest,slowest,equalize,shuffle,noise")
     args = ap.parse_args()
     if args.train_ops is None:
         args.train_ops = DEFAULT_TRAIN_OPS[args.task]
     if args.density is None:
         args.density = "dense" if args.task == "parity" else "sparse"
-    if args.task == "recall" and args.density != "sparse":
-        raise SystemExit("recall task is defined sparse-only (one answer after the delay)")
+    if args.task in {"recall", "assoc"} and args.density != "sparse":
+        raise SystemExit(f"{args.task} task is defined sparse-only (one answer after the delay)")
+    if args.eval_examples <= 0 or args.eval_batch <= 0:
+        raise SystemExit("eval_examples and eval_batch must be positive")
+    if args.scar_k <= 0:
+        raise SystemExit("scar_k must be positive")
+    if args.eval_lengths:
+        try:
+            eval_lengths = tuple(sorted({int(x) for x in args.eval_lengths.split(",") if x.strip()}))
+        except ValueError as exc:
+            raise SystemExit("eval_lengths must be comma-separated positive integers") from exc
+        if not eval_lengths or any(x <= 0 for x in eval_lengths):
+            raise SystemExit("eval_lengths must contain positive integers")
+    else:
+        eval_lengths = EVAL_LENS[args.task]
 
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(1000 + args.seed)
@@ -448,16 +570,19 @@ def main():
         "transformer": {"d": 56, "L": 3, "h": 4, "ffn": 112},
         "token_merge": {"d": 56, "L": 3, "h": 4, "ffn": 112, "window": 8},
         "rlt": {"d": 40, "LE": 2, "LD": 2, "h": 4, "ffn": 80, "window": 8},
-        "scar": {"d": 88, "k": 16, "r": 40},
+        "scar": {"d": 88, "k": args.scar_k, "r": 40, "decay_mode": args.scar_decay_mode},
         # ablations: scar_carrier drops memory entirely and widens the carrier
         # (d 88 -> 112) to recover the parameter budget; scar_norecall keeps the
         # full write path but never reads memory, widening d 88 -> 98 for the
         # same reason. Both land within ~1% of scar's parameter count.
-        "scar_carrier": {"d": 112, "k": 16, "r": 40, "use_memory": False, "use_recall": False},
-        "scar_norecall": {"d": 98, "k": 16, "r": 40, "use_memory": True, "use_recall": False},
+        "scar_carrier": {"d": 112, "k": args.scar_k, "r": 40, "use_memory": False, "use_recall": False},
+        "scar_norecall": {"d": 98, "k": args.scar_k, "r": 40, "use_memory": True, "use_recall": False},
     }
     auto = gen_automaton(rng) if args.task == "five" else None
     model = MODELS[args.model](vocab, cfg)
+    initial_decay = None
+    if args.model == "scar" and model.use_memory:
+        initial_decay = model.decay().detach().cpu().tolist()
     nparams = count_params(model)
     print(f"[{args.model}/{args.task}/s{args.seed}] params={nparams}", flush=True)
 
@@ -472,10 +597,11 @@ def main():
     train_rng = np.random.default_rng(2000 + args.seed)
     eval_rng = np.random.default_rng(3000 + args.seed)
     eval_sets = {}
-    for ops in EVAL_LENS[args.task]:
-        eval_sets[ops] = make_fixed_eval(args.task, ops, 2048, eval_rng, auto)
+    for ops in eval_lengths:
+        eval_sets[ops] = make_fixed_eval(args.task, ops, args.eval_examples, eval_rng, auto)
 
     losses, step_ms = [], []
+    training_tokens = 0
     model.train()
     t_start = time.perf_counter()
     # curriculum schedule (sparse only): grow the train length 4 -> 8 -> 16 -> 32
@@ -495,6 +621,7 @@ def main():
                 if frac >= start:
                     ops_now = ops_c
         seq, ans, run = make_batch(args.task, ops_now, args.batch, train_rng, auto)
+        training_tokens += int(seq.numel())
         x = add_bos(seq, BOS)   # same convention as evaluation
         logits = model(x)   # (B, T, vocab)
         if args.density == "dense":
@@ -512,24 +639,79 @@ def main():
         if step % 500 == 0:
             print(f"  step {step} loss {np.mean(losses[-50:]):.4f}", flush=True)
 
-    accs, eval_times = evaluate(model, eval_sets, device, BOS)
+    accs, eval_times = evaluate(model, eval_sets, device, BOS, eval_batch=args.eval_batch)
+    intervention_accs = {}
+    if args.interventions and args.model == "scar":
+        intervention_map = {
+            "fastest": {"mask_fastest": True},
+            "slowest": {"mask_slowest": True},
+            "equalize": {"equalize_decay": True},
+            "shuffle": {"shuffle_slots": True},
+            "noise": {"noise_std": 0.10},
+        }
+        for name in [x.strip() for x in args.interventions.split(",") if x.strip()]:
+            if name not in intervention_map:
+                raise SystemExit(f"unknown intervention={name}")
+            intervention_accs[name], _ = evaluate(
+                model, eval_sets, device, BOS, eval_batch=args.eval_batch,
+                forward_kwargs={"intervention": intervention_map[name]},
+            )
+    memory_analysis = {}
+    if args.model == "scar" and model.use_memory:
+        longest = eval_sets[max(eval_lengths)][0]
+        memory_analysis = model.memory_diagnostics(add_bos(longest[:min(256, len(longest))], BOS))
+        final_decay = model.decay().detach().cpu().tolist()
+        memory_analysis.update({
+            "initial_decay": initial_decay,
+            "final_decay": final_decay,
+            "initial_half_life": [math.log(0.5) / math.log(max(x, 1e-12)) for x in initial_decay],
+            "final_half_life": [math.log(0.5) / math.log(max(x, 1e-12)) for x in final_decay],
+            "diagnostic_eval_context": int(max(eval_lengths)),
+            "diagnostic_examples": int(min(256, len(longest))),
+        })
     def git_commit():
         try:
             return subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL,
+                ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL,
                 text=True).strip()
         except Exception:
             return None
 
+    exp_id = args.experiment_id or f"{args.model}_{args.task}_{args.density}_seed{args.seed}"
+    commit = git_commit()
     out = {
-        "model": args.model, "task": args.task, "seed": args.seed,
+        "study": args.study, "protocol_version": args.protocol_version,
+        "experiment_id": exp_id,
+        "git_commit": commit,
+        "model": args.model, "variant": args.model,
+        "task": args.task, "seed": args.seed,
+        "task_parameters": {
+            "density": args.density,
+            "train_ops": args.train_ops,
+            "curriculum": bool(args.curriculum),
+            "scar_k": args.scar_k,
+            "scar_decay_mode": args.scar_decay_mode,
+        },
         "params": nparams, "steps": args.steps, "batch": args.batch,
-        "lr": args.lr, "train_ops": args.train_ops,
+        "batch_size": args.batch,
+        "lr": args.lr, "weight_decay": 0.01, "warmup_steps": warmup,
+        "lr_schedule": "linear_warmup_then_cosine_to_0.1",
+        "train_ops": args.train_ops,
+        "train_context": (2 * args.train_ops + 2 if args.task == "assoc" else args.train_ops),
+        "training_examples": args.steps * args.batch,
+        "training_tokens": training_tokens,
         "curriculum": bool(args.curriculum),
-        "eval_lengths": sorted(eval_sets), "chance_pct": TASK_CHANCE[args.task],
+        "eval_lengths": sorted(eval_sets), "eval_examples": args.eval_examples,
+        "eval_contexts": sorted(eval_sets),
+        "eval_context_tokens": [2 * x + 2 for x in sorted(eval_sets)] if args.task == "assoc" else sorted(eval_sets),
+        "chance_pct": TASK_CHANCE[args.task],
         "bos_token": BOS,
         "supervision": f"{args.task}_{args.density}",
-        "acc": accs, "eval_ms_per_program": eval_times,
+        "acc": accs, "metrics": {"accuracy_pct": accs},
+        "interventions": intervention_accs,
+        "memory_analysis": memory_analysis,
+        "eval_ms_per_program": eval_times,
+        "inference_ms_per_example": eval_times,
         "train_ms_per_step": float(np.mean(step_ms[-500:])),
         "final_loss": float(np.mean(losses[-100:])),
         "train_seconds": time.perf_counter() - t_start,
@@ -537,12 +719,20 @@ def main():
             "torch": torch.__version__, "numpy": np.__version__,
             "python": platform.python_version(), "platform": platform.platform(),
             "device": device, "torch_threads": torch.get_num_threads(),
-            "git_commit": git_commit(),
+            "cpu": platform.processor() or platform.machine(),
+            "gpu": (torch.cuda.get_device_name(0) if torch.cuda.is_available() else None),
+            "git_commit": commit,
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        },
+        "optimizer": {"name": "AdamW", "lr": args.lr, "weight_decay": 0.01},
+        "raw_metrics": {
+            "accuracy_pct": accs,
+            "loss_tail": losses[-100:],
+            "step_ms_tail": step_ms[-500:],
         },
     }
     os.makedirs(args.out, exist_ok=True)
-    with open(os.path.join(args.out, f"{args.model}_{args.task}_{args.density}_seed{args.seed}.json"), "w") as f:
+    with open(os.path.join(args.out, f"{exp_id}.json"), "w") as f:
         json.dump(out, f, indent=2)
     print(json.dumps(out, indent=2), flush=True)
 

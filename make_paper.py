@@ -2,7 +2,8 @@
 
 The paper is data-driven: all result tables, outcome-dependent prose, figures,
 and benchmark counts come from ``data/summary.json`` and
-``data/cost_bench.json``. Run ``aggregate.py`` and ``make_charts.py`` first.
+``data/cost_bench.json``. Run ``aggregate.py``, ``make_charts.py``, and the
+Study 2 collector/analysis first.
 """
 import json
 import os
@@ -81,24 +82,42 @@ def k_slots():
 
 
 def abstract_tail(summary, facts):
-    best_p, tied_p, _ = facts["parity_dense"]
-    best_text = (
-        "At the trained length, the best parity-dense result is "
-        + bs.NAMES[best_p] + " ("
-        + fmt_pct(accs(summary, best_p, "parity_dense", 32)) + ")"
-    )
-    others = [bs.NAMES[m] for m in tied_p if m != best_p]
-    if others:
-        best_text += ", with the same rounded mean as " + ", ".join(others)
     recall_scar = fmt_pct(accs(summary, "scar", "recall_sparse", 512))
     recall_carrier = fmt_pct(accs(summary, "scar_carrier", "recall_sparse", 512))
     recall_norecall = fmt_pct(accs(summary, "scar_norecall", "recall_sparse", 512))
-    return (
-        best_text + ". On the longest delayed-recall evaluation, SCAR reaches "
-        + recall_scar + ", compared with " + recall_carrier
+    text = (
+        "In the corrected Study 1 delayed-recall probe, SCAR reaches "
+        + recall_scar + " at 512 operations, compared with " + recall_carrier
         + " for the carrier-only ablation and " + recall_norecall
         + " when the memory is written but not read."
     )
+    study2_path = "analysis/study2/summary.json"
+    if os.path.exists(study2_path):
+        with open(study2_path) as f:
+            study2 = json.load(f)
+        endpoint = s2_fmt(study2, "recall_length", "scar", 4096)
+        assoc = s2_fmt(study2, "associative_recall", "scar", 32)
+        text += (
+            " In the preregistered follow-up, the same model is evaluated at "
+            "lengths through 4,096, reaches " + endpoint
+            + " at the 4,096-operation endpoint, and reaches " + assoc
+            + " at 32 key/value pairs; selective-copy and intervention sweeps "
+            "expose capacity and perturbation limits."
+        )
+    return text
+
+
+def study2_run_count():
+    total = 0
+    root = "study2_results"
+    if not os.path.isdir(root):
+        return 0
+    for _directory, _names, filenames in os.walk(root):
+        total += sum(
+            1 for filename in filenames
+            if filename.startswith("v3") and filename.endswith(".json")
+        )
+    return total
 
 
 def setup_text(summary):
@@ -263,10 +282,271 @@ def figure_tex(filename, caption, label):
 
 def copy_figures():
     os.makedirs("paper/figures", exist_ok=True)
+    for filename in os.listdir("paper/figures"):
+        if filename.startswith("study2_") and filename.endswith(".png"):
+            os.remove(os.path.join("paper/figures", filename))
     for filename in FIGURES:
         source = os.path.join("charts", filename)
         if os.path.exists(source):
             shutil.copy2(source, os.path.join("paper/figures", filename))
+    study2_dir = "analysis/study2"
+    if os.path.isdir(study2_dir):
+        for filename in os.listdir(study2_dir):
+            if filename.endswith(".png"):
+                target = filename if filename.startswith("study2_") else "study2_" + filename
+                shutil.copy2(
+                    os.path.join(study2_dir, filename),
+                    os.path.join("paper/figures", target),
+                )
+
+
+def s2_value(summary, family, model, context):
+    return summary.get(family, {}).get(model, {}).get(str(context))
+
+
+def s2_fmt(summary, family, model, context):
+    value = s2_value(summary, family, model, context)
+    if not value:
+        return "--"
+    return f"{value['mean']:.1f}\\,$\\pm$\\,{value['std']:.1f}\\%"
+
+
+def s2_table(summary, family, context, caption, label, models=None):
+    models = models or [
+        "gru", "lstm", "transformer", "rlt", "scar",
+        "scar_carrier", "scar_norecall",
+    ]
+    rows = []
+    for model in models:
+        if s2_value(summary, family, model, context):
+            rows.append(
+                f"{bs.NAMES.get(model, model)} & "
+                f"{s2_fmt(summary, family, model, context)} \\\\"
+            )
+    if not rows:
+        return ""
+    return (
+        "\\begin{table}[t]\n\\centering\\small\n"
+        f"\\caption{{{caption}}}\\label{{{label}}}\n"
+        "\\begin{tabular}{l c}\n\\toprule\n"
+        "Model & Accuracy (\\%) \\\\\n\\midrule\n"
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n\\end{table}\n"
+    )
+
+
+def s2_figure(filename, caption, label):
+    target = filename if filename.startswith("study2_") else "study2_" + filename
+    path = os.path.join("paper/figures", target)
+    if not os.path.exists(path):
+        return ""
+    return (
+        "\\begin{figure}[t]\n\\centering\n"
+        + "\\includegraphics[width=\\linewidth]{figures/" + target + "}\n"
+        + "\\caption{" + caption + "}\\label{" + label + "}\n"
+        + "\\end{figure}\n"
+    )
+
+
+def state_memory_parts():
+    path = "analysis/study2/state_memory.json"
+    if not os.path.exists(path):
+        return "", ""
+    with open(path) as f:
+        state = json.load(f).get("state_bytes", {})
+    contexts = ("64", "512", "4096")
+    models = ("gru", "rlt", "scar", "transformer")
+    rows = []
+    for model in models:
+        values = [state.get(model, {}).get(context) for context in contexts]
+        if all(value is not None for value in values):
+            rows.append(
+                f"{bs.NAMES.get(model, model)} & "
+                + " & ".join(f"{value:,}" for value in values)
+                + " \\\\"
+            )
+    if not rows:
+        return "", ""
+    scar = state.get("scar", {}).get("4096")
+    rlt = state.get("rlt", {}).get("4096")
+    transformer = state.get("transformer", {}).get("4096")
+    text = (
+        "The persistent-state accounting is constant for SCAR across the tested "
+        f"lengths ({scar:,} bytes at 4,096 operations), compared with "
+        f"{rlt:,} bytes for RLT-lite and {transformer:,} bytes for the full causal "
+        "Transformer at that endpoint. This counts streaming state, not parameter "
+        "storage or transient training activations."
+    )
+    table = (
+        "\\begin{table}[t]\n\\centering\\small\n"
+        "\\caption{Persistent inference state in bytes, excluding parameters and "
+        "transient training activations. Values are generated from the model "
+        "state accounting.}\\label{tab:state-memory}\n"
+        "\\begin{tabular}{l r r r}\n\\toprule\n"
+        "Model & 64 & 512 & 4,096 \\\\\n\\midrule\n"
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n\\end{table}\n"
+    )
+    return table, text
+
+
+def study2_section():
+    summary_path = "analysis/study2/summary.json"
+    required = {
+        "recall_length", "associative_recall", "ratio32", "ratio128",
+        "mechanism_slots1", "mechanism_decay_learned_multi",
+        "selective_copy_entropy16", "selective_copy_entropy2",
+        "intervention",
+    }
+    if not os.path.exists(summary_path):
+        raise RuntimeError(
+            "Study 2 analysis is missing; collect and analyze Kaggle results first"
+        )
+    with open(summary_path) as f:
+        summary = json.load(f)
+    missing = sorted(required - set(summary))
+    if missing:
+        raise RuntimeError(
+            "Study 2 analysis is incomplete: missing " + ", ".join(missing)
+        )
+    exact_path = "analysis/study2/exact_sequence_summary.json"
+    intervention_path = "analysis/study2/intervention_summary.json"
+    diagnostic_path = "analysis/study2/mechanism_diagnostics.json"
+    if (
+        not os.path.exists(exact_path)
+        or not os.path.exists(intervention_path)
+        or not os.path.exists(diagnostic_path)
+    ):
+        raise RuntimeError(
+            "Study 2 exact-sequence, intervention, or mechanism diagnostics "
+            "analysis is missing"
+        )
+    with open(exact_path) as f:
+        exact = json.load(f)
+    with open(intervention_path) as f:
+        interventions = json.load(f)
+    with open(diagnostic_path) as f:
+        diagnostics = json.load(f)
+    state_table, state_text = state_memory_parts()
+
+    recall = s2_table(
+        summary,
+        "recall_length",
+        4096,
+        "Study 2A delayed-recall accuracy at 4,096 operations; models were trained at 64 operations. Mean$\\pm$std over five seeds.",
+        "tab:study2-recall",
+    )
+    assoc = s2_fmt(summary, "associative_recall", "scar", 32)
+    ratio32 = s2_fmt(summary, "ratio32", "scar", 512)
+    ratio128 = s2_fmt(summary, "ratio128", "scar", 2048)
+    copy_high = exact.get("selective_copy_entropy16", {}).get("scar", {}).get("32")
+    copy_low = exact.get("selective_copy_entropy2", {}).get("scar", {}).get("32")
+    copy_high_text = (
+        "--" if not copy_high
+        else f"{copy_high['mean']:.1f}\\,$\\pm$\\,{copy_high['std']:.1f}\\%"
+    )
+    copy_low_text = (
+        "--" if not copy_low
+        else f"{copy_low['mean']:.1f}\\,$\\pm$\\,{copy_low['std']:.1f}\\%"
+    )
+
+    slot_values = []
+    for family, model_values in summary.items():
+        if family.startswith("mechanism_slots") and "scar" in model_values:
+            value = model_values["scar"].get("512")
+            if value:
+                slots = int(family[len("mechanism_slots"):])
+                slot_values.append((slots, value["mean"]))
+    slot_values.sort()
+    slot_text = ", ".join(
+        f"{slots}: {value:.1f}\\%" for slots, value in slot_values
+    )
+
+    intervention_values = interventions.get("intervention", {}).get("scar", {})
+    at512 = []
+    for name, values in sorted(intervention_values.items()):
+        if "512" in values:
+            at512.append(f"{name} {values['512']['mean']:.1f}\\%")
+    intervention_text = ", ".join(at512) if at512 else "--"
+
+    learned_diag = diagnostics.get("mechanism_decay_learned_multi", {}).get("scar", {})
+    final_half_lives = learned_diag.get("final_half_life", {})
+    half_life_means = [
+        value["mean"] for value in final_half_lives.values()
+        if isinstance(value, dict) and value.get("mean") is not None
+    ]
+    entropy_mean = (
+        learned_diag.get("attention_entropy_mean", {})
+        .get("scalar", {})
+        .get("mean")
+    )
+    timescale_text = (
+        f"The learned multi-timescale decay sweep ended with final slot half-lives "
+        f"spanning {min(half_life_means):.1f}--{max(half_life_means):.1f} operations "
+        f"across the 16 slots"
+        + (f", with mean read-attention entropy {entropy_mean:.2f}." if entropy_mean is not None else ".")
+        if half_life_means else
+        "The mechanism diagnostics did not expose a complete final half-life range."
+    )
+
+    return (
+        "The preregistered follow-up separates the original recall headline from "
+        "stress tests of length, training context, retrieval type, capacity, and "
+        "memory intervention. At 4,096 operations, the recall-length sweep gives "
+        "the following descriptive endpoint comparison; the model was trained at "
+        "only 64 operations.\n"
+        + recall
+        + "The train/test ratio probes show SCAR at " + ratio32
+        + " when trained at 32 operations and " + ratio128
+        + " when trained at 128 operations, so the 512-token result is not treated "
+        "as a universal context-length law. Associative recall is a useful negative "
+        "control: SCAR reaches " + assoc
+        + " at 32 key/value pairs against a 6.25\\% single-choice chance floor, "
+        "indicating that the fixed exponential summaries do not solve arbitrary "
+        "multi-item retrieval.\n\n"
+        "Selective copy makes the retrieval target multi-output rather than a "
+        "single first-token label. At 32 marked items, SCAR's free-running "
+        "exact-sequence accuracy is " + copy_high_text
+        + " under the high-entropy distractor condition and " + copy_low_text
+        + " under the low-entropy condition. The slot sweep's 512-operation "
+        "SCAR endpoints are " + (slot_text or "not available")
+        + ". Frozen-memory interventions at 512 operations are "
+        + intervention_text
+        + ". " + timescale_text + " These are exploratory, descriptive comparisons; "
+        "no significance claim is made from the small seed counts. "
+        + state_text + "\n"
+        + state_table
+        + s2_figure(
+            "recall_length_accuracy.png",
+            "Study 2A: delayed-recall accuracy through 4,096 operations after training at 64 operations. Shaded bands are bootstrap intervals over seed means.",
+            "fig:study2-recall",
+        )
+        + s2_figure(
+            "ratio_comparison.png",
+            "Study 2B: accuracy plotted against evaluation length divided by training length for two training contexts.",
+            "fig:study2-ratio",
+        )
+        + s2_figure(
+            "associative_recall_accuracy.png",
+            "Study 2C: associative key/value recall across the number of presented pairs. Shaded bands are bootstrap intervals over seed means.",
+            "fig:study2-associative",
+        )
+        + s2_figure(
+            "selective_copy_entropy16_exact_sequence.png",
+            "Study 2D: free-running exact-sequence accuracy for high-entropy selective copy.",
+            "fig:study2-copy",
+        )
+        + s2_figure(
+            "mechanism_decay_learned_multi_accuracy.png",
+            "Study 2E: accuracy for the learned multi-timescale decay mechanism variant.",
+            "fig:study2-mechanism",
+        )
+        + s2_figure(
+            "intervention_accuracy.png",
+            "Study 2F: frozen-memory intervention accuracy at the tested evaluation contexts.",
+            "fig:study2-intervention",
+        )
+    )
 
 
 def main():
@@ -297,32 +577,29 @@ def main():
 \usepackage[margin=1in]{geometry}
 \usepackage{booktabs,amsmath,amssymb,graphicx,url}
 \usepackage[hidelinks]{hyperref}
-\title{SCAR: Constant-Size State-Carrying Memory with Attentive Recall\\
-\large A controlled study of supervision density, length extrapolation, and memory ablations}
+\title{SCAR: Constant-Size Learned Memory for Length Extrapolation\\
+\large Controlled tests of recall, capacity, and memory mechanisms}
 \author{Arjun K. Shah}
 \date{September 2026}
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Can a recurrent model retain useful information over long sequences without
-growing a token-level memory? We introduce SCAR (State-Carrier with Attentive
-Recall), a compact architecture that combines a GRU state-carrier with a
-constant-size bank of @@K_SLOTS@@ learned-decay exponential memory slots and one
-attentive read head. We evaluate SCAR against eight matched-size baselines and
-ablations on mod-2 parity, a random five-state automaton, and delayed
-first-token recall under dense and sparse supervision. The release contains
-@@N_RUNS@@ runs (nine models, five conditions, three seeds) and evaluates lengths up
-to 256 operations for parity/five and 512 for recall. SCAR matches the strong
-baselines at the trained lengths, but the ablation pattern is more informative
-than the headline accuracy: removing memory or its read path does not hurt the
-short training distribution, yet both ablations degrade on the longest recall
-probe. The dedicated CPU benchmark measures SCAR at roughly three times GRU
-training cost and below the RLT-lite baseline, so the result is not a claim
-that SCAR is universally cheaper. It is a controlled, synthetic finding that
-constant-size memory can matter for length extrapolation even when state
-carriage alone is sufficient for in-distribution fitting. We also document and
-test three corrected harness bugs before reporting the results.
+Can a recurrent model preserve useful information beyond its training context
+without retaining a token-level memory? We study SCAR (State-Carrier with
+Attentive Recall), which combines a GRU carrier with a constant-size bank of
+@@K_SLOTS@@ learned-decay exponential slots and an attentive read head. The
+corrected Study 1 release contains @@N_RUNS@@ matched runs; the cloud-only
+Study 2 matrix adds @@STUDY2_RUNS@@ preregistered stress-test runs spanning
+length extrapolation, train/test ratios, associative recall, selective copying,
+slot/decay mechanisms, and frozen-memory interventions. The central result is
+not an across-the-board accuracy win: in-distribution recall hides a separation
+that appears at long horizons, while multi-item retrieval and perturbation
+tests reveal capacity and robustness limits. The dedicated CPU benchmark
+falsifies the original approximately one-times-GRU cost hypothesis: SCAR is
+slower than a GRU but faster than RLT-lite in the measured setting. The result
+is a controlled synthetic study of when bounded learned memory helps, and when
+it does not.
 @@ABSTRACT_TAIL@@
 \end{abstract}
 
@@ -352,6 +629,8 @@ O(1)-per-token update and a fixed O(kd) memory state;
 supervision density and evaluates beyond the training length;
 \item parameter-matched memory and read-path ablations that separate short
 training performance from long-delay extrapolation; and
+\item a preregistered Study 2 matrix testing length ratios, associative
+recall, multi-item capacity, mechanisms, and interventions; and
 \item a reproducible methodology audit: the earlier release had a collapsed
 decay initialization, a BOS train/evaluation mismatch, and an incorrect
 description of the Transformer baseline. All reported numbers below come from
@@ -375,10 +654,20 @@ self-attention and expose all earlier positions during a causal forward pass
 \cite{vaswani2017}. External-memory networks add a separately addressable
 storage and read mechanism \cite{sukhbaatar2015}; structured state-space
 models offer another route to long-range sequence processing with fixed-size
-state \cite{gu2022s4}. SCAR is intentionally small and synthetic: it is an
-ablation instrument for the state-carriage versus growing-memory question,
-not a claim to improve language modeling or to replace these broader model
-families.
+state \cite{gu2022s4}. Segment-level recurrence and compressed memories offer
+related ways to extend context beyond a fixed window
+\cite{dai2019transformerxl,rae2020compressive}. Associative recall and its
+multi-query formulation provide a particularly relevant diagnostic for whether
+an efficient sequence model can retrieve several previously presented items
+\cite{arora2023zoology}. Earlier work also showed that deliberately slow
+recurrent units can learn longer memory \cite{mikolov2015longmemory}.
+Linear-attention formulations expose a recurrent constant-state computation
+\cite{katharopoulos2020linear}; RetNet makes a related parallel/recurrent
+retention trade-off \cite{sun2023retnet}; and Mamba uses input-dependent
+selective state-space updates for content-based retention \cite{gu2024mamba}.
+SCAR is intentionally small and synthetic: it is an ablation instrument for
+the state-carriage versus growing-memory question, not a claim to improve
+language modeling or to replace these broader model families.
 
 The RLT baseline here is a faithful small-scale implementation of the
 publicly described recurrent-looped pattern: a causal encoder, a recurrent
@@ -475,6 +764,11 @@ here.
 @@ABLATION_TEXT@@
 @@DENSITY_FIGURE@@
 
+\section{Study 2: stress tests and failure modes}
+@@STUDY2_SECTION@@
+
+\clearpage
+
 \section{Compute cost}
 @@COST_TABLE@@
 @@COST_TEXT@@
@@ -483,27 +777,25 @@ here.
 \section{Discussion}
 @@DISCUSSION_TEXT@@
 
-The central result is a separation between fitting and extrapolation. At the
-trained lengths, the SCAR ablations report the same rounded means as SCAR on
-these small tasks; this is a descriptive comparison, not a significance test.
-On the 512-operation recall probe, however, the full
-multi-timescale read path retains perfect performance while the two
-parameter-matched ablations degrade substantially. This is evidence that the
-fixed memory can carry a useful long-delay signal, not evidence that every
-component is needed for every task.
-
-The clean density sweep also changes the story. Dense parity supervision makes
-almost every architecture look successful, whereas fixed-length sparse parity
-leaves several at chance. A single architecture ranking under one supervision
-regime would therefore conflate model capability with the amount and placement
-of gradient signal. We report this as a descriptive three-seed comparison, not
-as a statistically tested ranking.
+The combined evidence supports a conditional claim. At trained lengths, the
+parameter-matched SCAR ablations often fit as well as the full model; at 4,096
+operations, full SCAR retains a large advantage over those ablations, although
+RLT remains stronger in that endpoint comparison. Study 2 also marks the
+boundary of the benefit rather than assuming that one-token recall implies
+general-purpose memory: associative retrieval is only modestly above chance,
+free-running selective copy collapses at 32 items, and the mechanism and
+frozen-state interventions are descriptive rather than a causal decomposition.
+Dense versus sparse supervision remains a methodological confounder when the
+protocol is not held fixed, so we do not present a universal architecture
+ranking or a significance claim from three seeds.
 
 \section{Limitations}
 This is a synthetic study with small models, a single parameter scale, three
-seeds, and short training budgets. The tasks test exact state tracking rather
-than natural-language modeling, multimodal reasoning, or noisy real-world
-sequences. The ablations are parameter-matched, but changing width to replace
+seeds for most Study 2 families, and short training budgets. The tasks test
+exact state tracking rather than natural-language modeling, multimodal
+reasoning, or noisy real-world sequences. Associative and selective-copy
+tasks probe more than first-token recall but do not establish language-model
+quality. The ablations are parameter-matched, but changing width to replace
 removed modules can itself change optimization and representation capacity.
 The RLT comparison is a small implementation, not a claim about the behavior
 of all RLT variants. Timing uses one CPU machine, two PyTorch threads, a
@@ -515,21 +807,25 @@ tasks.
 
 \section{Reproducibility and release}
 The repository contains the model and task code (``bench.py``), regression
-tests (``tests/``), all 135 result JSON files, aggregation and chart scripts,
-the generated tables, and the figures used in this PDF. The sweep itself is
-run on Kaggle CPU kernels through ``kaggle/``; no local training is required.
+tests (``tests/``), the quarantined Study 1 artifacts, all collected Study 2
+JSON files and manifests, aggregation and chart scripts, the generated tables,
+and the figures used in this PDF. All optimizer steps and training timings in
+the two studies run on Kaggle CPU kernels through ``kaggle/``; no local
+training is required.
 The release command sequence is:
 \begin{verbatim}
 python3 -m pytest tests/ -q
 python3 aggregate.py
 python3 make_charts.py
+python3 -m study2.analyze study2_results --out analysis/study2
+python3 study2/state_memory.py --out analysis/study2/state_memory.json
 python3 make_paper.py
 (cd paper && tectonic paper.tex)
 \end{verbatim}
 The generated summary includes per-seed values and the curriculum flag so the
 reported condition cannot silently drift from the trained artifacts.
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{12}
 \bibitem{elman1990}
 J. L. Elman, ``Finding structure in time,'' \emph{Cognitive Science},
 14(2), 179--211, 1990. doi:10.1207/s15516709cog1402\_1.
@@ -557,6 +853,39 @@ A. Gu, K. Goel, and C. Ré, ``Efficiently modeling long sequences with
 structured state spaces,'' in \emph{International Conference on Learning
 Representations}, 2022. arXiv:2111.00396.
 
+\bibitem{mikolov2015longmemory}
+T. Mikolov, A. Joulin, S. Chopra, M. Mathieu, and M. Ranzato,
+``Learning longer memory in recurrent neural networks,'' arXiv:1412.7753, 2015.
+
+\bibitem{katharopoulos2020linear}
+A. Katharopoulos, A. Vyas, N. Pappas, and F. Fleuret,
+``Transformers are RNNs: Fast autoregressive transformers with linear attention,''
+in \emph{International Conference on Machine Learning}, 2020. arXiv:2006.16236.
+
+\bibitem{sun2023retnet}
+Y. Sun et al., ``Retentive network: A successor to Transformer for large
+language models,'' arXiv:2307.08621, 2023.
+
+\bibitem{gu2024mamba}
+A. Gu and T. Dao, ``Mamba: Linear-time sequence modeling with selective state
+spaces,'' arXiv:2312.00752, 2023.
+
+\bibitem{dai2019transformerxl}
+Z. Dai, Z. Yang, Y. Yang, J. Carbonell, Q. V. Le, and R. Salakhutdinov,
+``Transformer-XL: Attentive language models beyond a fixed-length context,''
+\emph{Proceedings of ACL}, 2019. arXiv:1901.02860.
+
+\bibitem{rae2020compressive}
+J. W. Rae, A. Potapenko, S. M. Jayakumar, and T. P. Lillicrap,
+``Compressive transformers for long-range sequence modelling,'' in
+\emph{International Conference on Learning Representations}, 2020.
+arXiv:1911.05507.
+
+\bibitem{arora2023zoology}
+S. Arora, S. Eyuboglu, A. Timalsina, I. Johnson, M. Poli, J. Zou,
+A. Rudra, and C. Ré, ``Zoology: Measuring and improving recall in efficient
+language models,'' arXiv:2312.04927, 2023.
+
 \bibitem{zhang2026rlt}
 Y. Zhang, J. Feng, and S. Qin, ``Recurrent Looped Transformer,'' technical
 report, 2026. \url{https://github.com/yifanzhang-pro/recurrent-looped-tranformer}.
@@ -568,6 +897,7 @@ report, 2026. \url{https://github.com/yifanzhang-pro/recurrent-looped-tranformer
     replacements = {
         "@@SETUP@@": setup_text(summary),
         "@@N_RUNS@@": str(sum(entry["n_seeds"] for entry in summary.values())),
+        "@@STUDY2_RUNS@@": str(study2_run_count()),
         "@@K_SLOTS@@": str(k_slots()),
         "@@ABSTRACT_TAIL@@": abstract_tail(summary, facts),
         "@@TRAINED_TABLE@@": trained_table,
@@ -579,6 +909,7 @@ report, 2026. \url{https://github.com/yifanzhang-pro/recurrent-looped-tranformer
         "@@SCAR_GRU_COST@@": cost_ratios["scar_gru"],
         "@@SCAR_RLT_COST@@": cost_ratios["scar_rlt"],
         "@@DISCUSSION_TEXT@@": discussion_text(summary),
+        "@@STUDY2_SECTION@@": study2_section(),
         "@@ACCURACY_FIGURE@@": figure_tex(
             "accuracy_by_config.png",
             "Accuracy versus evaluation length. Lines are seed means and shaded bands span the three-seed minimum and maximum.",

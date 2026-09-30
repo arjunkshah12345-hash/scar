@@ -1,0 +1,21 @@
+{
+  "study": "study2",
+  "protocol_version": "v3.0",
+  "experiment_family": "v3E_mechanism",
+  "git_commit": "86feb3ca0c95d2f18071aa8a963bd180e9994c50",
+  "eval_lengths": [
+    64,
+    512,
+    2048
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "expected_count": 33,
+  "subfamilies": {
+    "slot_sweep": 21,
+    "decay_sweep": 12
+  }
+}

@@ -50,6 +50,30 @@ def test_decay_init_does_not_collapse():
     assert (lam.max() - lam.min()) > 0.08, "decays collapsed -- multi-timescale destroyed"
 
 
+def test_decay_modes_are_explicit_and_shape_stable():
+    for mode in ("learned_multi", "learned_single", "fixed_multi", "fixed_single"):
+        m = SCAR(vocab=5, k=8, decay_mode=mode)
+        lam = m.decay()
+        assert lam.shape == (8,)
+        assert torch.all((lam > 0.0) & (lam < 1.0))
+    assert torch.allclose(
+        SCAR(vocab=5, k=8, decay_mode="learned_single").decay(),
+        SCAR(vocab=5, k=8, decay_mode="learned_single").decay()[0].expand(8),
+    )
+
+
+def test_scar_interventions_preserve_output_shape():
+    torch.manual_seed(0)
+    m = SCAR(vocab=5, k=8)
+    x = torch.randint(0, 5, (2, 12))
+    for intervention in (
+        {"mask_fastest": True}, {"mask_slowest": True},
+        {"equalize_decay": True}, {"shuffle_slots": True},
+        {"noise_std": 0.1},
+    ):
+        assert m(x, intervention=intervention).shape == (2, 12, 5)
+
+
 # ---------- 2. train/eval BOS consistency ----------
 
 class ProtocolParityModel(torch.nn.Module):
@@ -81,11 +105,13 @@ def test_eval_prepends_bos_and_scores_protocol_consistently():
 
 def test_train_uses_bos_prefix():
     # training batches must start with BOS = vocab - 2 for every task
-    for task, vocab, chance in [("parity", 5, 50.0), ("five", 11, 20.0), ("recall", 10, 12.5)]:
+    for task, vocab, chance in [("parity", 5, 50.0), ("five", 11, 20.0),
+                                ("recall", 10, 12.5), ("assoc", 50, 6.25)]:
         auto = gen_automaton(np.random.default_rng(3)) if task == "five" else None
         seq, ans, run = make_batch(task, 8, 4, np.random.default_rng(0), auto)
         x = add_bos(seq, vocab - 2)
-        assert x.shape == (4, 9)
+        expected_len = 2 * 8 + 3 if task == "assoc" else 9
+        assert x.shape == (4, expected_len)
         assert (x[:, 0] == vocab - 2).all()
         assert TASK_CHANCE[task] == chance
 
@@ -115,6 +141,22 @@ def test_recall_task_definition():
     assert torch.equal(ans, seq[:, 0]), "answer must be the first token"
     assert TASK_CHANCE["recall"] == 12.5
     assert bench.DEFAULT_TRAIN_OPS["recall"] == 64
+
+
+def test_associative_recall_has_disjoint_keys_values_and_query():
+    seq, ans, run = make_batch("assoc", 4, 64, np.random.default_rng(17), None)
+    assert seq.shape == (64, 10)  # 4 key/value pairs + query marker/key
+    assert (seq[:, :-2] < 48).all()
+    assert (seq[:, -2] == 49).all()
+    assert (seq[:, -1] < 32).all()
+    assert ((ans >= 32) & (ans < 48)).all()
+    for row, target in zip(seq.numpy(), ans.numpy()):
+        keys = row[:8:2]
+        values = row[1:8:2]
+        query = row[-1]
+        assert (keys == query).sum() == 1
+        assert target == values[int(np.flatnonzero(keys == query)[0])]
+    assert bench.TASK_CHANCE["assoc"] == 6.25
 
 
 # ---------- 5. ablation parameter counts ----------

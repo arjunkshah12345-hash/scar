@@ -1,0 +1,28 @@
+{
+  "study": "study2",
+  "protocol_version": "v3.0",
+  "experiment_family": "v3B_recall_train128",
+  "git_commit": "e8c3df8aa6e2ffc7bcd61e82683cb9fa0a4f046e",
+  "models": [
+    "gru",
+    "transformer",
+    "rlt",
+    "scar",
+    "scar_carrier",
+    "scar_norecall"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_ops": 128,
+  "eval_lengths": [
+    128,
+    256,
+    512,
+    1024,
+    2048
+  ],
+  "expected_count": 18
+}
