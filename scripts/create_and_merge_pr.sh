@@ -60,7 +60,7 @@ safety_root="$(jq -r '.root' <<<"$safety_json")"
   || die "GitHub safety silence is active"
 
 pending_pr_id() {
-  local queue_file="$safety_root/pr-queue.json"
+  local queue_file="$safety_root/state/pr-queue.json"
   [[ -f "$queue_file" ]] || return 0
   jq -r --arg repo "$repo" --arg base "$BASE_BRANCH" --arg head "$HEAD_BRANCH" '
     [.[] | select(
@@ -74,7 +74,7 @@ pending_pr_id() {
 }
 
 pending_merge_id() {
-  local queue_file="$safety_root/merge-queue.json"
+  local queue_file="$safety_root/state/merge-queue.json"
   [[ -f "$queue_file" ]] || return 0
   jq -r --arg repo "$repo" --arg pr "$1" '
     [.[] | select(
