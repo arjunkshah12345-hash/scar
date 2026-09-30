@@ -92,7 +92,9 @@ fi
 git push --set-upstream origin "$RELEASE_BRANCH"
 
 safety_status="$(github-safety status)"
-python3 -c 'import json, sys; s=json.load(sys.stdin); raise SystemExit("GitHub safety silence is active") if s.get("silenceActive") else None' <<<"$safety_status"
+if ! python3 -c 'import json, sys; sys.exit(1 if json.load(sys.stdin).get("silenceActive") else 0)' <<<"$safety_status"; then
+  die "GitHub safety silence is active"
+fi
 
 remote_url="$(git remote get-url origin)"
 repo="${remote_url#https://github.com/}"
