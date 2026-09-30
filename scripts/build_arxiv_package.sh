@@ -27,5 +27,5 @@ cp paper/paper.tex "$OUT/paper.tex"
 cp paper/README.md "$OUT/README.md"
 cp paper/figures/* "$OUT/figures/"
 
-(cd "$OUT" && tectonic paper.tex >/dev/null)
+(cd "$OUT" && SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}" tectonic paper.tex >/dev/null)
 echo "built $OUT (source and independently compiled PDF)"

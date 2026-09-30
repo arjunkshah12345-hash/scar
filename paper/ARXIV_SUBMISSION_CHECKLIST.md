@@ -38,5 +38,7 @@ Do not upload the paper until every Study 2 family is complete and validated.
 - Paper PDF: `paper/paper.pdf` (10 pages, independently checked visually).
 - arXiv source package: `arxiv/`.
 - Recommended categories: `cs.LG` primary; `stat.ML` secondary if desired.
-- Rebuild commands: `python3 make_paper.py`, `(cd paper && tectonic paper.tex)`,
-  and `./scripts/build_arxiv_package.sh`.
+- Rebuild commands: `python3 make_paper.py`,
+  `(cd paper && SOURCE_DATE_EPOCH=0 tectonic paper.tex)`, and
+  `./scripts/build_arxiv_package.sh` (the release scripts pin the PDF epoch for
+  reproducible generated files).

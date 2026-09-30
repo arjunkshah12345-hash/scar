@@ -14,5 +14,5 @@ Compile locally with:
 
 ```sh
 cd paper
-tectonic paper.tex
+SOURCE_DATE_EPOCH=0 tectonic paper.tex
 ```
