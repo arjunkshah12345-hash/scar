@@ -1,8 +1,8 @@
 # SCAR Study 2 Protocol (v3)
 
-Status: frozen before Study 2 result collection  
-Protocol version: `v3.0`  
-Study 1 commit: `eccca7b` / corrected release lineage  
+Status: frozen before Study 2 result collection
+Protocol version: `v3.0`
+Study 1 commit: `eccca7b` / corrected release lineage
 Study 2 branch: `research/v3`
 
 This document freezes the follow-up protocol before inspecting Study 2 results.
