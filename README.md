@@ -89,6 +89,20 @@ in the protocol are deliberately outside this primary release: no language
 model result is claimed, and the existing curriculum archive remains separate
 from the fixed-density Study 1 tables.
 
+The completed release supports a specific, bounded conclusion. After training
+at 64 operations, SCAR reaches 72.8% +/- 13.8% at 4,096-operation delayed
+recall, versus 13.4% +/- 0.6% for the carrier-only ablation and 12.5% +/- 0.4%
+for the no-recall ablation; RLT remains stronger at 97.4% +/- 5.7% in this
+probe. At a 32x train/test ratio SCAR stays at 100% through 512 operations,
+whereas the 128-operation context does not transfer to the 2,048-operation
+endpoint. Associative recall reaches only 11.4% at 32 key/value pairs against
+the 6.25% single-choice chance floor, and free-running selective copy reaches
+0% exact-sequence accuracy at 32 items. Mechanism and frozen-memory sweeps are
+descriptive: slot usage is non-monotonic and injected memory noise is the only
+512-operation intervention with a material drop. These results support a
+long-horizon advantage over matched SCAR ablations, not a claim of general
+purpose constant-size storage or universal architecture dominance.
+
 After the Kaggle kernels finish, collect and validate them locally with:
 
 ```
@@ -99,9 +113,9 @@ python3 -m study2.analyze study2_results --out analysis/study2
 Incomplete or failed kernel outputs must not be included in paper tables. The
 paper is regenerated only after the complete artifact families pass validation.
 
-When the complete Study 2 release is committed on `research/v3`, the
-publication helper performs the final non-training checks, pushes the branch,
-and queues the PR to `main`:
+The completed Study 2 release is committed on `research/v3`. The publication
+helper performs the final non-training checks, pushes the branch, and queues
+the PR to `main`:
 
 ```
 ./scripts/publish_study2_pr.sh

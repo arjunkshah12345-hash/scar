@@ -2,7 +2,7 @@
   "study": "study2",
   "protocol_version": "v3.0",
   "experiment_family": "v3B_recall_train32",
-  "git_commit": "4b6bad09415f656df136d405d716265f33c13683",
+  "git_commit": "c107907bd1790895d52e724d8b1935e20621186b",
   "models": [
     "gru",
     "transformer",

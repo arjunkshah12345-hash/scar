@@ -720,15 +720,16 @@ here.
 @@DISCUSSION_TEXT@@
 
 The combined evidence supports a conditional claim. At trained lengths, the
-parameter-matched SCAR ablations often fit as well as the full model; long
-delays expose a benefit from bounded memory and attentive readout. Study 2
-then tests the boundary of that benefit rather than assuming that one-token
-recall implies general-purpose memory: associative retrieval, selective copy,
-slot sweeps, decay variants, and frozen-state interventions are reported as
-separate descriptive analyses. Dense versus sparse supervision remains a
-methodological confounder when the protocol is not held fixed, so we do not
-present a universal architecture ranking or a significance claim from three
-seeds.
+parameter-matched SCAR ablations often fit as well as the full model; at 4,096
+operations, full SCAR retains a large advantage over those ablations, although
+RLT remains stronger in that endpoint comparison. Study 2 also marks the
+boundary of the benefit rather than assuming that one-token recall implies
+general-purpose memory: associative retrieval is only modestly above chance,
+free-running selective copy collapses at 32 items, and the mechanism and
+frozen-state interventions are descriptive rather than a causal decomposition.
+Dense versus sparse supervision remains a methodological confounder when the
+protocol is not held fixed, so we do not present a universal architecture
+ranking or a significance claim from three seeds.
 
 \section{Limitations}
 This is a synthetic study with small models, a single parameter scale, three

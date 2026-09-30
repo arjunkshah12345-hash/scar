@@ -2,7 +2,7 @@
   "study": "study2",
   "protocol_version": "v3.0",
   "experiment_family": "v3C_associative_recall",
-  "git_commit": "ee3b6b34a9271c74ac8dcda4f4c3517ed53833a3",
+  "git_commit": "c107907bd1790895d52e724d8b1935e20621186b",
   "models": [
     "gru",
     "lstm",

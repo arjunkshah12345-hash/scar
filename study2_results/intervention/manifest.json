@@ -15,9 +15,5 @@
     512,
     2048,
     4096
-  ],
-  "models": [
-    "scar"
-  ],
-  "expected_count": 5
+  ]
 }
