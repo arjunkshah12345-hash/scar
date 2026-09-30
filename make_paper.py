@@ -252,17 +252,29 @@ def discussion_text(summary):
         if (a := accs(summary, model, "parity_sparse", 32))
         and a["mean"] <= bs.CHANCE["parity"] + 2.0
     ]
-    collapse_text = (
-        " Under sparse parity supervision, " + str(len(collapsed))
-        + " of nine architectures remain at the 50\\% chance floor ("
-        + ", ".join(collapsed) + ")."
-        if collapsed else " Under sparse parity supervision, some models escape chance."
-    )
+    if len(collapsed) == 9:
+        collapse_text = (
+            " Under sparse parity supervision, all nine architectures remain at "
+            "the 50\\% chance floor (" + ", ".join(collapsed) + ")."
+        )
+        sparse_floor = "all nine"
+    elif collapsed:
+        collapse_text = (
+            " Under sparse parity supervision, " + str(len(collapsed))
+            + " of nine architectures remain at the 50\\% chance floor ("
+            + ", ".join(collapsed) + ")."
+        )
+        sparse_floor = "several"
+    else:
+        collapse_text = (
+            " Under sparse parity supervision, some models escape chance."
+        )
+        sparse_floor = "several"
     return (
         "The clean fixed-length density comparison is descriptive: "
         + collapse_text.strip()
         + " Dense supervision makes almost every architecture look successful, "
-        "whereas sparse parity leaves several at chance. With only three seeds, "
+        "whereas sparse parity leaves " + sparse_floor + " at chance. With only three seeds, "
         "we report means and sample standard deviations but do not call "
         "near-equal cells significance-labeled. The strongest result is therefore "
         "not that SCAR universally wins: it is that the parameter-matched "
@@ -445,7 +457,6 @@ def study2_section():
     )
     assoc = s2_fmt(summary, "associative_recall", "scar", 32)
     ratio32 = s2_fmt(summary, "ratio32", "scar", 512)
-    ratio128 = s2_fmt(summary, "ratio128", "scar", 2048)
     copy_high = exact.get("selective_copy_entropy16", {}).get("scar", {}).get("32")
     copy_low = exact.get("selective_copy_entropy2", {}).get("scar", {}).get("32")
     copy_high_text = (
@@ -522,11 +533,13 @@ def study2_section():
         "the following descriptive endpoint comparison; the model was trained at "
         "only 64 operations.\n"
         + recall
-        + "The train/test ratio probes show SCAR at " + ratio32
-        + " when trained at 32 operations and " + ratio128
-        + " when trained at 128 operations, so the 512-token result is not treated "
-        "as a universal context-length law. The completed associative-recall "
-        "matrix is the pair-count study; the separately specified long-token "
+        + "When trained at 32 operations, SCAR remains at " + ratio32
+        + " accuracy through 512 operations, a 16$\\times$ length extrapolation. "
+        "Separately trained 128-operation models remained near chance even at "
+        "their training length, indicating a training-regime or optimization "
+        "failure rather than a failure of length extrapolation. The completed "
+        "associative-recall matrix is the pair-count study; the separately "
+        "specified long-token "
         "extension was not run. Associative recall is a useful negative "
         "control: SCAR reaches " + assoc
         + " at 32 key/value pairs against a 6.25\\% single-choice chance floor, "

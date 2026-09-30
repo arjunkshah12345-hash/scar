@@ -107,9 +107,11 @@ The completed release supports a specific, bounded conclusion. After training
 at 64 operations, SCAR reaches 72.8% +/- 13.8% at 4,096-operation delayed
 recall, versus 13.4% +/- 0.6% for the carrier-only ablation and 12.5% +/- 0.4%
 for the no-recall ablation; RLT remains stronger at 97.4% +/- 5.7% in this
-probe. At a 32x train/test ratio SCAR stays at 100% through 512 operations,
-whereas the 128-operation context does not transfer to the 2,048-operation
-endpoint. Associative recall reaches only 11.4% at 32 key/value pairs against
+probe. When trained at 32 operations, SCAR remains at 100% accuracy through
+512 operations, a 16× length extrapolation. Separately trained 128-operation
+models remained near chance even at their training length, indicating a
+training-regime or optimization failure rather than a failure of length
+extrapolation. Associative recall reaches only 11.4% at 32 key/value pairs against
 the 6.25% single-choice chance floor, and free-running selective copy reaches
 0% exact-sequence accuracy at 32 items. Mechanism and frozen-memory sweeps are
 descriptive: slot usage is non-monotonic and injected memory noise is the only

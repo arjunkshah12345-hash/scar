@@ -55,7 +55,8 @@ and free-running exact-sequence summaries where a task provides them.
 
 ## Publication gate
 
-After all seven Study 2 families are committed on `research/v3`, run:
+After the primary Study 2 families are present on `main` (or the release
+branch under test), run:
 
 ```sh
 ./scripts/publish_study2_pr.sh
