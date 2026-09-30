@@ -1,5 +1,7 @@
 # SCAR: State-Carrier with Attentive Recall
 
+Canonical public release: `main` at `4d67a03`.
+
 Can a 1990s recurrence core + a tiny O(1) memory read path replace the looped
 transformer's machinery? SCAR is a minimal architecture: a gated GRU state-carrier
 writing into a **multi-timescale compressed memory** (k learned-decay slots,
@@ -70,24 +72,36 @@ accelerator exception because its 4,096-token causal attention is quadratic;
 Kaggle CPU is the recorded fallback when the weekly GPU quota is exhausted.
 Code, device provenance, and compact results live here.
 
-## Study 2 protocol (research/v3)
+## Study 2 protocol and release (main)
 
 The follow-up study is preregistered in
 [`EXPERIMENT_PROTOCOL_V3.md`](EXPERIMENT_PROTOCOL_V3.md). It keeps the v2
 release immutable and adds cloud-only probes for delayed recall, train/test
 length ratios, associative key/value recall, selective copy with capacity and
 distractor-entropy conditions, memory-slot mechanisms, and frozen-memory
-interventions. Every Study 2 driver clones the exact `research/v3` commit and
-writes provenance-rich JSON under `study2_results/`; no optimizer step is
-allowed on the local machine.
+interventions. Each collected Study 2 driver cloned the recorded historical
+`research/v3` commit and wrote provenance-rich JSON under `study2_results/`;
+the resulting release is canonical on `main`. No optimizer step is allowed on
+the local machine.
 
-The primary Study 2 release gate is the seven-family, 172-run matrix: recall
+The completed primary Study 2 release is the seven-family, 172-run matrix: recall
 length (35), ratio32 (18), ratio128 (18), associative recall (21), selective
 copy (42), mechanism (33), and intervention (5). The supervision/curriculum
 comparison and language-modeling extension described as exploratory follow-ups
 in the protocol are deliberately outside this primary release: no language
 model result is claimed, and the existing curriculum archive remains separate
 from the fixed-density Study 1 tables.
+
+### Study 2 completeness record
+
+The protocol was frozen before collection. The 172 checked-in runs execute the
+principal matrices reported in the paper; they do not represent every secondary
+condition listed in the frozen protocol. The following conditions were not run
+and are not claimed: the separately specified long-token associative-recall
+extension; the selective-copy independent delay sweep and conflicting-value /
+repeated-distractor interference variant; and the associative-recall slot-count
+mechanism probe plus additional narrower/wider decay-range sweeps. These are
+future work, not missing files silently excluded from the release.
 
 The completed release supports a specific, bounded conclusion. After training
 at 64 operations, SCAR reaches 72.8% +/- 13.8% at 4,096-operation delayed
@@ -103,7 +117,7 @@ descriptive: slot usage is non-monotonic and injected memory noise is the only
 long-horizon advantage over matched SCAR ablations, not a claim of general
 purpose constant-size storage or universal architecture dominance.
 
-After the Kaggle kernels finish, collect and validate them locally with:
+For a fresh reproduction, collect and validate the Kaggle outputs locally with:
 
 ```
 bash kaggle/collect_study2.sh
@@ -111,11 +125,12 @@ python3 -m study2.analyze study2_results --out analysis/study2
 ```
 
 Incomplete or failed kernel outputs must not be included in paper tables. The
-paper is regenerated only after the complete artifact families pass validation.
+paper is regenerated only after the complete primary-release families pass
+validation.
 
-The completed Study 2 release is committed on `research/v3`. The publication
-helper performs the final non-training checks, pushes the branch, and queues
-the PR to `main`:
+The completed Study 2 release was collected on the historical `research/v3`
+branch and is now canonical on `main` at `4d67a03`. The publication helper
+remains as a reproducible, non-training release workflow for future branches:
 
 ```
 ./scripts/publish_study2_pr.sh
@@ -132,6 +147,8 @@ the same invocation.
 ## Project hygiene
 `requirements.txt` records the Python environment, `.github/workflows/ci.yml`
 runs the non-training regression/release tests, `LICENSE` grants MIT use, and
-`CITATION.cff` provides the software citation metadata. GitHub repository
-description, homepage, and topics should be set to the SCAR project page when
-publishing the release.
+`CITATION.cff` provides the software citation metadata. The intended GitHub
+description is: “Constant-size learned memory for extreme sequence-length
+extrapolation. 307 controlled runs across recall, capacity, ablations, and
+memory mechanisms.” The one-shot metadata helper records that description,
+homepage, and topic set for the repository owner to apply.

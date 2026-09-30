@@ -98,11 +98,13 @@ def abstract_tail(summary, facts):
         endpoint = s2_fmt(study2, "recall_length", "scar", 4096)
         assoc = s2_fmt(study2, "associative_recall", "scar", 32)
         text += (
-            " In the preregistered follow-up, the same model is evaluated at "
+            " In the completed primary Study 2 release, the same model is evaluated at "
             "lengths through 4,096, reaches " + endpoint
             + " at the 4,096-operation endpoint, and reaches " + assoc
             + " at 32 key/value pairs; selective-copy and intervention sweeps "
-            "expose capacity and perturbation limits."
+            "expose capacity and perturbation limits. The release covers the "
+            "principal reported matrices, while several secondary preregistered "
+            "conditions remain future work."
         )
     return text
 
@@ -265,7 +267,12 @@ def discussion_text(summary):
         "near-equal cells significance-labeled. The strongest result is therefore "
         "not that SCAR universally wins: it is that the parameter-matched "
         "carrier-only model can match SCAR on short tasks while losing its "
-        "long-delay advantage."
+        "long-delay advantage. The mechanism diagnostics also caution against "
+        "a slot-specialization story: the learned slots are highly correlated, "
+        "read attention is close to uniform, and equalization or shuffling has "
+        "little effect in the tested probe while injected noise degrades recall. "
+        "This is consistent with a redundant bank of continuous summaries, not "
+        "evidence that the slots are independently addressable memory cells."
     )
 
 
@@ -480,6 +487,11 @@ def study2_section():
         .get("scalar", {})
         .get("mean")
     )
+    correlation_mean = (
+        learned_diag.get("slot_correlation_abs_mean", {})
+        .get("scalar", {})
+        .get("mean")
+    )
     timescale_text = (
         f"The learned multi-timescale decay sweep ended with final slot half-lives "
         f"spanning {min(half_life_means):.1f}--{max(half_life_means):.1f} operations "
@@ -488,9 +500,23 @@ def study2_section():
         if half_life_means else
         "The mechanism diagnostics did not expose a complete final half-life range."
     )
+    mechanism_correlation_text = (
+        " In the learned multi-timescale recall diagnostics, mean absolute slot "
+        f"correlation is {correlation_mean:.4f} and read-attention entropy is "
+        f"{entropy_mean:.2f}; attention is therefore close to uniform and the "
+        "slots are highly redundant in this probe."
+        if correlation_mean is not None and entropy_mean is not None
+        else ""
+    )
 
     return (
-        "The preregistered follow-up separates the original recall headline from "
+        "The completed primary Study 2 release executes the principal matrices "
+        "reported here from the frozen protocol. It does not claim completion "
+        "of every preregistered secondary condition: the separate long-token "
+        "associative-recall extension, the selective-copy independent delay and "
+        "conflicting-value/repeated-distractor interference variant, associative "
+        "recall slot-count runs, and additional narrower/wider decay-range sweeps "
+        "were not run. The release separates the original recall headline from "
         "stress tests of length, training context, retrieval type, capacity, and "
         "memory intervention. At 4,096 operations, the recall-length sweep gives "
         "the following descriptive endpoint comparison; the model was trained at "
@@ -499,7 +525,9 @@ def study2_section():
         + "The train/test ratio probes show SCAR at " + ratio32
         + " when trained at 32 operations and " + ratio128
         + " when trained at 128 operations, so the 512-token result is not treated "
-        "as a universal context-length law. Associative recall is a useful negative "
+        "as a universal context-length law. The completed associative-recall "
+        "matrix is the pair-count study; the separately specified long-token "
+        "extension was not run. Associative recall is a useful negative "
         "control: SCAR reaches " + assoc
         + " at 32 key/value pairs against a 6.25\\% single-choice chance floor, "
         "indicating that the fixed exponential summaries do not solve arbitrary "
@@ -512,7 +540,11 @@ def study2_section():
         "SCAR endpoints are " + (slot_text or "not available")
         + ". Frozen-memory interventions at 512 operations are "
         + intervention_text
-        + ". " + timescale_text + " These are exploratory, descriptive comparisons; "
+        + ". " + timescale_text + mechanism_correlation_text
+        + " The released selective-copy subset varies marked-item count and "
+        "distractor entropy at a fixed long delay; it does not include the "
+        "preregistered independent delay sweep or interference variant. These "
+        "are exploratory, descriptive comparisons; "
         "no significance claim is made from the small seed counts. "
         + state_text + "\n"
         + state_table
@@ -589,8 +621,8 @@ Can a recurrent model preserve useful information beyond its training context
 without retaining a token-level memory? We study SCAR (State-Carrier with
 Attentive Recall), which combines a GRU carrier with a constant-size bank of
 @@K_SLOTS@@ learned-decay exponential slots and an attentive read head. The
-corrected Study 1 release contains @@N_RUNS@@ matched runs; the cloud-only
-Study 2 matrix adds @@STUDY2_RUNS@@ preregistered stress-test runs spanning
+corrected Study 1 release contains @@N_RUNS@@ matched runs; the completed
+primary Study 2 release adds @@STUDY2_RUNS@@ artifact-validated runs spanning
 length extrapolation, train/test ratios, associative recall, selective copying,
 slot/decay mechanisms, and frozen-memory interventions. The central result is
 not an across-the-board accuracy win: in-distribution recall hides a separation
@@ -629,7 +661,7 @@ O(1)-per-token update and a fixed O(kd) memory state;
 supervision density and evaluates beyond the training length;
 \item parameter-matched memory and read-path ablations that separate short
 training performance from long-delay extrapolation; and
-\item a preregistered Study 2 matrix testing length ratios, associative
+\item an artifact-validated primary Study 2 release testing length ratios, associative
 recall, multi-item capacity, mechanisms, and interventions; and
 \item a reproducible methodology audit: the earlier release had a collapsed
 decay initialization, a BOS train/evaluation mismatch, and an incorrect

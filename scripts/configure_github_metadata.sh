@@ -8,7 +8,7 @@ set -euo pipefail
 #   RUN_GITHUB_METADATA=1 ./scripts/configure_github_metadata.sh
 
 REPO="${REPO:-arjunkshah12345-hash/scar}"
-DESCRIPTION="SCAR: State-Carrier with Attentive Recall for constant-size long-context memory"
+DESCRIPTION="Constant-size learned memory for extreme sequence-length extrapolation. 307 controlled runs across recall, capacity, ablations, and memory mechanisms."
 HOMEPAGE="https://github.com/${REPO}/tree/main/paper"
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then

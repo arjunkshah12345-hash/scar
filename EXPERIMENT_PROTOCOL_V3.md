@@ -3,7 +3,8 @@
 Status: frozen before Study 2 result collection
 Protocol version: `v3.0`
 Study 1 commit: `eccca7b` / corrected release lineage
-Study 2 branch: `research/v3`
+Study 2 collection branch: `research/v3` (historical)
+Canonical release: `main` @ `4d67a03`
 
 This document freezes the follow-up protocol before inspecting Study 2 results.
 Study 1 remains an immutable historical result. New artifacts must carry this
@@ -228,6 +229,22 @@ When tracing is enabled, record per-slot write magnitude, read attention,
 attention entropy, memory norm, and slot correlation by position. Trace files
 are stored separately from headline result JSON and are never used to select
 successful runs.
+
+## 9.1 Release execution status (post hoc record)
+
+This section records what was executed after the protocol was frozen; it does
+not amend the preregistration or convert an unrun condition into a null result.
+The completed primary release contains 172 validated runs across the seven
+families listed in the repository README. It executes the pair-count
+associative-recall matrix, the selective-copy item-count/entropy subset, and
+the recall-focused mechanism and intervention matrices.
+
+The following preregistered secondary conditions were not run: the separate
+long-token associative-recall extension; the independent selective-copy delay
+sweep; the conflicting-marked-value and repeated-distractor interference
+variant; associative-recall slot-count experiments; and additional
+narrower/wider learned decay-range sweeps. They remain future work and are not
+represented in the paper's claims.
 
 ## 9. Supervision and curriculum study
 
