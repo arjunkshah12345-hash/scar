@@ -291,6 +291,9 @@ def figure_tex(filename, caption, label):
 
 def copy_figures():
     os.makedirs("paper/figures", exist_ok=True)
+    for filename in os.listdir("paper/figures"):
+        if filename.startswith("study2_") and filename.endswith(".png"):
+            os.remove(os.path.join("paper/figures", filename))
     for filename in FIGURES:
         source = os.path.join("charts", filename)
         if os.path.exists(source):
@@ -299,9 +302,10 @@ def copy_figures():
     if os.path.isdir(study2_dir):
         for filename in os.listdir(study2_dir):
             if filename.endswith(".png"):
+                target = filename if filename.startswith("study2_") else "study2_" + filename
                 shutil.copy2(
                     os.path.join(study2_dir, filename),
-                    os.path.join("paper/figures", "study2_" + filename),
+                    os.path.join("paper/figures", target),
                 )
 
 
@@ -341,15 +345,58 @@ def s2_table(summary, family, context, caption, label, models=None):
 
 
 def s2_figure(filename, caption, label):
-    path = os.path.join("paper/figures", "study2_" + filename)
+    target = filename if filename.startswith("study2_") else "study2_" + filename
+    path = os.path.join("paper/figures", target)
     if not os.path.exists(path):
         return ""
     return (
         "\\begin{figure}[t]\n\\centering\n"
-        + "\\includegraphics[width=\\linewidth]{figures/study2_" + filename + "}\n"
+        + "\\includegraphics[width=\\linewidth]{figures/" + target + "}\n"
         + "\\caption{" + caption + "}\\label{" + label + "}\n"
         + "\\end{figure}\n"
     )
+
+
+def state_memory_parts():
+    path = "analysis/study2/state_memory.json"
+    if not os.path.exists(path):
+        return "", ""
+    with open(path) as f:
+        state = json.load(f).get("state_bytes", {})
+    contexts = ("64", "512", "4096")
+    models = ("gru", "rlt", "scar", "transformer")
+    rows = []
+    for model in models:
+        values = [state.get(model, {}).get(context) for context in contexts]
+        if all(value is not None for value in values):
+            rows.append(
+                f"{bs.NAMES.get(model, model)} & "
+                + " & ".join(f"{value:,}" for value in values)
+                + " \\\\"
+            )
+    if not rows:
+        return "", ""
+    scar = state.get("scar", {}).get("4096")
+    rlt = state.get("rlt", {}).get("4096")
+    transformer = state.get("transformer", {}).get("4096")
+    text = (
+        "The persistent-state accounting is constant for SCAR across the tested "
+        f"lengths ({scar:,} bytes at 4,096 operations), compared with "
+        f"{rlt:,} bytes for RLT-lite and {transformer:,} bytes for the full causal "
+        "Transformer at that endpoint. This counts streaming state, not parameter "
+        "storage or transient training activations."
+    )
+    table = (
+        "\\begin{table}[t]\n\\centering\\small\n"
+        "\\caption{Persistent inference state in bytes, excluding parameters and "
+        "transient training activations. Values are generated from the model "
+        "state accounting.}\\label{tab:state-memory}\n"
+        "\\begin{tabular}{l r r r}\n\\toprule\n"
+        "Model & 64 & 512 & 4,096 \\\\\n\\midrule\n"
+        + "\n".join(rows)
+        + "\n\\bottomrule\n\\end{tabular}\n\\end{table}\n"
+    )
+    return table, text
 
 
 def study2_section():
@@ -389,6 +436,7 @@ def study2_section():
         interventions = json.load(f)
     with open(diagnostic_path) as f:
         diagnostics = json.load(f)
+    state_table, state_text = state_memory_parts()
 
     recall = s2_table(
         summary,
@@ -474,7 +522,9 @@ def study2_section():
         + ". Frozen-memory interventions at 512 operations are "
         + intervention_text
         + ". " + timescale_text + " These are exploratory, descriptive comparisons; "
-        "no significance claim is made from the small seed counts.\n"
+        "no significance claim is made from the small seed counts. "
+        + state_text + "\n"
+        + state_table
         + s2_figure(
             "recall_length_accuracy.png",
             "Study 2A: delayed-recall accuracy through 4,096 operations after training at 64 operations. Shaded bands are bootstrap intervals over seed means.",
@@ -486,9 +536,24 @@ def study2_section():
             "fig:study2-ratio",
         )
         + s2_figure(
+            "associative_recall_accuracy.png",
+            "Study 2C: associative key/value recall across the number of presented pairs. Shaded bands are bootstrap intervals over seed means.",
+            "fig:study2-associative",
+        )
+        + s2_figure(
             "selective_copy_entropy16_exact_sequence.png",
             "Study 2D: free-running exact-sequence accuracy for high-entropy selective copy.",
             "fig:study2-copy",
+        )
+        + s2_figure(
+            "mechanism_decay_learned_multi_accuracy.png",
+            "Study 2E: accuracy for the learned multi-timescale decay mechanism variant.",
+            "fig:study2-mechanism",
+        )
+        + s2_figure(
+            "intervention_accuracy.png",
+            "Study 2F: frozen-memory intervention accuracy at the tested evaluation contexts.",
+            "fig:study2-intervention",
         )
     )
 
@@ -710,6 +775,8 @@ here.
 
 \section{Study 2: stress tests and failure modes}
 @@STUDY2_SECTION@@
+
+\clearpage
 
 \section{Compute cost}
 @@COST_TABLE@@

@@ -35,7 +35,7 @@ Do not upload the paper until every Study 2 family is complete and validated.
 - Subtitle: `Controlled tests of recall, capacity, and memory mechanisms`
 - Study 2 evidence: 172 validated runs across seven families, with provenance
   recorded in `study2_results/` and generated summaries in `analysis/study2/`.
-- Paper PDF: `paper/paper.pdf` (10 pages, independently checked visually).
+- Paper PDF: `paper/paper.pdf` (15 pages, independently checked visually).
 - arXiv source package: `arxiv/`.
 - Recommended categories: `cs.LG` primary; `stat.ML` secondary if desired.
 - Rebuild commands: `python3 make_paper.py`,

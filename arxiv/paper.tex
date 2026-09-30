@@ -265,7 +265,21 @@ SCAR-no-recall & 12.5\,$\pm$\,0.4\% \\
 \end{table}
 The train/test ratio probes show SCAR at 100.0\,$\pm$\,0.0\% when trained at 32 operations and 12.2\,$\pm$\,0.8\% when trained at 128 operations, so the 512-token result is not treated as a universal context-length law. Associative recall is a useful negative control: SCAR reaches 11.4\,$\pm$\,0.6\% at 32 key/value pairs against a 6.25\% single-choice chance floor, indicating that the fixed exponential summaries do not solve arbitrary multi-item retrieval.
 
-Selective copy makes the retrieval target multi-output rather than a single first-token label. At 32 marked items, SCAR's free-running exact-sequence accuracy is 0.0\,$\pm$\,0.0\% under the high-entropy distractor condition and 0.0\,$\pm$\,0.0\% under the low-entropy condition. The slot sweep's 512-operation SCAR endpoints are 1: 91.1\%, 2: 100.0\%, 4: 77.1\%, 8: 86.7\%, 16: 100.0\%, 32: 100.0\%, 64: 89.1\%. Frozen-memory interventions at 512 operations are equalize 100.0\%, fastest 100.0\%, noise 60.4\%, shuffle 100.0\%, slowest 100.0\%. The learned multi-timescale decay sweep ended with final slot half-lives spanning 8.1--470.1 operations across the 16 slots, with mean read-attention entropy 2.70. These are exploratory, descriptive comparisons; no significance claim is made from the small seed counts.
+Selective copy makes the retrieval target multi-output rather than a single first-token label. At 32 marked items, SCAR's free-running exact-sequence accuracy is 0.0\,$\pm$\,0.0\% under the high-entropy distractor condition and 0.0\,$\pm$\,0.0\% under the low-entropy condition. The slot sweep's 512-operation SCAR endpoints are 1: 91.1\%, 2: 100.0\%, 4: 77.1\%, 8: 86.7\%, 16: 100.0\%, 32: 100.0\%, 64: 89.1\%. Frozen-memory interventions at 512 operations are equalize 100.0\%, fastest 100.0\%, noise 60.4\%, shuffle 100.0\%, slowest 100.0\%. The learned multi-timescale decay sweep ended with final slot half-lives spanning 8.1--470.1 operations across the 16 slots, with mean read-attention entropy 2.70. These are exploratory, descriptive comparisons; no significance claim is made from the small seed counts. The persistent-state accounting is constant for SCAR across the tested lengths (5,984 bytes at 4,096 operations), compared with 3,281,920 bytes for RLT-lite and 5,505,024 bytes for the full causal Transformer at that endpoint. This counts streaming state, not parameter storage or transient training activations.
+\begin{table}[t]
+\centering\small
+\caption{Persistent inference state in bytes, excluding parameters and transient training activations. Values are generated from the model state accounting.}\label{tab:state-memory}
+\begin{tabular}{l r r r}
+\toprule
+Model & 64 & 512 & 4,096 \\
+\midrule
+GRU & 448 & 448 & 448 \\
+RLT & 56,320 & 414,720 & 3,281,920 \\
+SCAR & 5,984 & 5,984 & 5,984 \\
+Transformer (full causal) & 86,016 & 688,128 & 5,505,024 \\
+\bottomrule
+\end{tabular}
+\end{table}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/study2_recall_length_accuracy.png}
@@ -273,10 +287,32 @@ Selective copy makes the retrieval target multi-output rather than a single firs
 \end{figure}
 \begin{figure}[t]
 \centering
+\includegraphics[width=\linewidth]{figures/study2_ratio_comparison.png}
+\caption{Study 2B: accuracy plotted against evaluation length divided by training length for two training contexts.}\label{fig:study2-ratio}
+\end{figure}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/study2_associative_recall_accuracy.png}
+\caption{Study 2C: associative key/value recall across the number of presented pairs. Shaded bands are bootstrap intervals over seed means.}\label{fig:study2-associative}
+\end{figure}
+\begin{figure}[t]
+\centering
 \includegraphics[width=\linewidth]{figures/study2_selective_copy_entropy16_exact_sequence.png}
 \caption{Study 2D: free-running exact-sequence accuracy for high-entropy selective copy.}\label{fig:study2-copy}
 \end{figure}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/study2_mechanism_decay_learned_multi_accuracy.png}
+\caption{Study 2E: accuracy for the learned multi-timescale decay mechanism variant.}\label{fig:study2-mechanism}
+\end{figure}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/study2_intervention_accuracy.png}
+\caption{Study 2F: frozen-memory intervention accuracy at the tested evaluation contexts.}\label{fig:study2-intervention}
+\end{figure}
 
+
+\clearpage
 
 \section{Compute cost}
 \begin{table}[t]
