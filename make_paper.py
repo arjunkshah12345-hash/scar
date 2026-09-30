@@ -82,21 +82,12 @@ def k_slots():
 
 
 def abstract_tail(summary, facts):
-    best_p, tied_p, _ = facts["parity_dense"]
-    best_text = (
-        "At the trained length, the best parity-dense result is "
-        + bs.NAMES[best_p] + " ("
-        + fmt_pct(accs(summary, best_p, "parity_dense", 32)) + ")"
-    )
-    others = [bs.NAMES[m] for m in tied_p if m != best_p]
-    if others:
-        best_text += ", with the same rounded mean as " + ", ".join(others)
     recall_scar = fmt_pct(accs(summary, "scar", "recall_sparse", 512))
     recall_carrier = fmt_pct(accs(summary, "scar_carrier", "recall_sparse", 512))
     recall_norecall = fmt_pct(accs(summary, "scar_norecall", "recall_sparse", 512))
     text = (
-        best_text + ". On the longest delayed-recall evaluation, SCAR reaches "
-        + recall_scar + ", compared with " + recall_carrier
+        "In the corrected Study 1 delayed-recall probe, SCAR reaches "
+        + recall_scar + " at 512 operations, compared with " + recall_carrier
         + " for the carrier-only ablation and " + recall_norecall
         + " when the memory is written but not read."
     )

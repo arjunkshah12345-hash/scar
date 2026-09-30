@@ -25,7 +25,7 @@ falsifies the original approximately one-times-GRU cost hypothesis: SCAR is
 slower than a GRU but faster than RLT-lite in the measured setting. The result
 is a controlled synthetic study of when bounded learned memory helps, and when
 it does not.
-At the trained length, the best parity-dense result is Elman RNN (100.0\,$\pm$\,0.0\%), with the same rounded mean as LSTM, GRU, TokenMerge (RLT abl.), RLT, SCAR, SCAR-carrier (no memory), SCAR-no-recall. On the longest delayed-recall evaluation, SCAR reaches 100.0\,$\pm$\,0.0\%, compared with 56.6\,$\pm$\,18.5\% for the carrier-only ablation and 30.5\,$\pm$\,32.4\% when the memory is written but not read. In the preregistered follow-up, the same model is evaluated at lengths through 4,096, reaches 72.8\,$\pm$\,13.8\% at the 4,096-operation endpoint, and reaches 11.4\,$\pm$\,0.6\% at 32 key/value pairs; selective-copy and intervention sweeps expose capacity and perturbation limits.
+In the corrected Study 1 delayed-recall probe, SCAR reaches 100.0\,$\pm$\,0.0\% at 512 operations, compared with 56.6\,$\pm$\,18.5\% for the carrier-only ablation and 30.5\,$\pm$\,32.4\% when the memory is written but not read. In the preregistered follow-up, the same model is evaluated at lengths through 4,096, reaches 72.8\,$\pm$\,13.8\% at the 4,096-operation endpoint, and reaches 11.4\,$\pm$\,0.6\% at 32 key/value pairs; selective-copy and intervention sweeps expose capacity and perturbation limits.
 \end{abstract}
 
 \section{Introduction}
