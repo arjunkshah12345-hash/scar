@@ -1,10 +1,12 @@
 # SCAR arXiv submission checklist
 
-Do not upload the paper until every Study 2 family is complete and validated.
+Do not upload the paper until every Study 2 family reported in the primary
+release is complete and validated.
 
 - [x] Every Study 2 family has internally consistent artifact/manifest
-      commits, and each recorded commit is an ancestor of the published
-      `research/v3` head; rerun any family if behavior-changing code differs.
+      commits, and each recorded commit is an ancestor of the canonical
+      `main` release `4d67a03`; rerun any family if behavior-changing code
+      differs.
 - [x] Every declared family passes `python3 -m study2.validate` with its exact
       expected count; manifests are provenance metadata, not result rows:
       recall-length 35, ratio32 18, ratio128 18, associative-recall 21,
@@ -31,10 +33,13 @@ Do not upload the paper until every Study 2 family is complete and validated.
 
 ## Final release record
 
+- Canonical public release: `main` @ `4d67a03`.
 - Title: `SCAR: Constant-Size Learned Memory for Length Extrapolation`
 - Subtitle: `Controlled tests of recall, capacity, and memory mechanisms`
-- Study 2 evidence: 172 validated runs across seven families, with provenance
-  recorded in `study2_results/` and generated summaries in `analysis/study2/`.
+- Study 2 evidence: 172 validated runs across seven primary-release families,
+  with provenance recorded in `study2_results/` and generated summaries in
+  `analysis/study2/`. This is not a claim that every secondary condition in
+  the frozen protocol was run.
 - Paper PDF: `paper/paper.pdf` (15 pages, independently checked visually).
 - arXiv source package: `arxiv/`.
 - Recommended categories: `cs.LG` primary; `stat.ML` secondary if desired.
@@ -63,8 +68,8 @@ Can a recurrent model preserve useful information beyond its training context
 without retaining a token-level memory? We study SCAR (State-Carrier with
 Attentive Recall), which combines a GRU carrier with a constant-size bank of
 16 learned-decay exponential slots and an attentive read head. The corrected
-Study 1 release contains 135 matched runs; the cloud-only Study 2 matrix adds
-172 preregistered stress-test runs spanning length extrapolation, train/test
+Study 1 release contains 135 matched runs; the completed primary Study 2
+release adds 172 artifact-validated runs spanning length extrapolation, train/test
 ratios, associative recall, selective copying, slot/decay mechanisms, and
 frozen-memory interventions. The central result is not an across-the-board
 accuracy win: in-distribution recall hides a separation that appears at long
@@ -75,10 +80,19 @@ faster than RLT-lite in the measured setting. The result is a controlled
 synthetic study of when bounded learned memory helps, and when it does not.
 In the corrected Study 1 delayed-recall probe, SCAR reaches 100.0% at 512
 operations, compared with 56.6% for the carrier-only ablation and 30.5% when
-the memory is written but not read. In the preregistered follow-up, the same
+the memory is written but not read. In the primary Study 2 release, the same
 model is evaluated at lengths through 4,096, reaches 72.8% +/- 13.8% at the
 4,096-operation endpoint, and reaches 11.4% +/- 0.6% at 32 key/value pairs;
 selective-copy and intervention sweeps expose capacity and perturbation limits.
+
+### Completeness record
+
+The release executes the principal matrices reported in the paper, not every
+secondary condition in the frozen protocol. The separately specified long-token
+associative-recall extension, the selective-copy independent delay and
+conflicting-value/repeated-distractor interference conditions, associative
+recall slot-count mechanism runs, and additional narrower/wider decay-range
+sweeps were not run and are explicitly future work.
 
 ### Manual submission steps
 
