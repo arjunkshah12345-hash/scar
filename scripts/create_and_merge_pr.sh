@@ -37,8 +37,10 @@ done
 [[ "$HEAD_BRANCH" != "$BASE_BRANCH" ]] || die "HEAD_BRANCH must differ from BASE_BRANCH"
 [[ "$(git branch --show-current)" == "$HEAD_BRANCH" ]] \
   || die "checkout $HEAD_BRANCH first"
-[[ -z "$(git status --porcelain)" ]] \
-  || die "working tree is dirty; commit validated changes first"
+dirty="$(git status --porcelain --untracked-files=all -- \
+  ':(exclude)scripts/create_pr_once.sh')"
+[[ -z "$dirty" ]] \
+  || { printf '%s\n' "$dirty" >&2; die "working tree is dirty; commit validated changes first"; }
 
 git fetch origin "$BASE_BRANCH" --quiet
 if git diff --quiet "origin/$BASE_BRANCH...HEAD"; then
